@@ -27,6 +27,12 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/capacitor-nearby:
+    devDependencies:
+      '@capacitor/core':
+        specifier: ^8.5.2
+        version: 8.5.2
+
   packages/engine: {}
 
   packages/net:
@@ -46,6 +52,9 @@ importers:
       '@tarot/bots':
         specifier: workspace:*
         version: link:../bots
+      '@tarot/capacitor-nearby':
+        specifier: workspace:*
+        version: link:../capacitor-nearby
       '@tarot/engine':
         specifier: workspace:*
         version: link:../engine

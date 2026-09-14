@@ -1,6 +1,6 @@
 # ADR 001 — Transport for offline table play
 
-- **Status:** Accepted, pending on-device validation (see "Outstanding gate")
+- **Status:** Accepted and implemented, pending on-device validation (see "Outstanding gate")
 - **Date:** 2026-09-14
 - **Context:** Phase 0 of the build plan
 
@@ -106,6 +106,23 @@ Bluetooth permissions are refused.
 
 Option C is rejected outright.
 
+## What was built
+
+The decision is implemented, as of step 9:
+
+- `packages/capacitor-nearby` — the thin bridge, written ourselves as decided.
+  It is ~360 lines of plain Java: five calls, five callbacks, no game state. It
+  is Java rather than Kotlin deliberately — the Capacitor template already
+  compiles Java, so the plugin adds no toolchain of its own, which matters for
+  code that cannot be compiled on the machine it was written on.
+- `NearbyTransport` in `packages/net` — the `Transport` implementation, plus the
+  advert encoding that squeezes a table's name, size and free seats into the one
+  short string Nearby lets an advertiser broadcast.
+- A fake radio in the tests, modelling what Nearby does: advertise, discover,
+  connect, deliver a payload to exactly one endpoint, and go out of range. The
+  transport, framing, seating, reconnection and protocol above it are the real
+  ones; only the radio is substituted.
+
 ## The interface everything hides behind
 
 `packages/net` exposes one interface with three implementations over time:
@@ -157,22 +174,34 @@ version currency, permission surface, API shape) is everything that was
 verifiable here; the physical hand-off is not.
 
 The gate therefore stands open, and the risk it was meant to retire is still
-live. Concretely, before step 9 (table play) starts, someone with two Android
-phones must:
+live. The rest of the project was built anyway, because none of it depends on
+the answer — but table play does, and it is now the only thing standing between
+the project and a game at a real table.
 
-1. Build the spike app from `spikes/nearby/` (to be written with the plugin).
-   The Capacitor Android project it would extend now exists at
-   `packages/ui/android`, configured for Android 9+ and portrait, so the spike
-   is a plugin and a screen rather than a project from scratch.
-2. Put both phones in aeroplane mode, then re-enable Wi-Fi and Bluetooth only.
-3. Confirm advertise → discover → connect → `sendPayload` round-trips a string,
-   and record the time from "tap Host" to "connected".
-4. Repeat with five devices to confirm `P2P_STAR` holds four spokes.
+There is no longer a spike to write: the app itself is the spike. Someone with
+two Android phones needs to:
 
-If that fails, the fallback is option B and this ADR gets superseded, not
-amended. Nothing in steps 2–8 depends on the answer: the engine, the bots, the
-UI, the PWA and the Android wrapper all sit on `LocalTransport`, which is why
-the build order puts them first and why work continued past this gate rather
-than stopping at it. Those steps are now done, so this gate is the next thing
-standing between the project and table play — and it is the one part of the
-build that cannot be done from a container at all.
+1. Build the APK (`pnpm --filter @tarot/ui android:apk`, or take the artefact
+   from the `android` CI job) and install it on both.
+2. Put both in aeroplane mode, then re-enable Wi-Fi and Bluetooth only.
+3. On one: *Jouer en tablée* → *Créer une tablée*, three seats. On the other:
+   *Jouer en tablée* → *Rejoindre une tablée*. Confirm the table appears in the
+   list with its name and free seats, and record the time from "tap Host" to
+   "seated".
+4. Deal, and play a hand. Then walk one phone out of range mid-hand and back in:
+   the table should wait, then a bot should take over, then the returning phone
+   should get its seat back.
+5. Repeat with five devices to confirm `P2P_STAR` holds four spokes.
+
+What would most likely go wrong, in rough order of probability: the permission
+flow on a specific Android version; `P2P_STAR` failing to hold four spokes on
+cheap hardware; and the advert string being truncated below the limit assumed
+here. The first two would be fixed in the plugin; the third would mean moving
+the free-seat count out of the advert and into the first message after
+connecting.
+
+If Nearby fails outright, the fallback is option B and this ADR gets superseded,
+not amended. That would mean writing a second `Transport`, and nothing above
+`packages/net` would change.
+
+

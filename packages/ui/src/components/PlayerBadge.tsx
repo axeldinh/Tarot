@@ -18,8 +18,15 @@ export function PlayerBadge({ seat, view, tricks }: PlayerBadgeProps): JSX.Eleme
   const isPartner = view.partner === seat.seat && view.partner !== view.taker;
   const active = view.currentPlayer === seat.seat && view.phase !== 'done' && view.phase !== 'passed';
 
+  // A seat whose phone has dropped is worth saying out loud: the table is
+  // either waiting for them or being played by a stand-in.
+  const away = seat.kind === 'human' && (seat.awaitingReturn || seat.standIn);
+
   return (
-    <div className={`badge${active ? ' active' : ''}`} data-testid={`badge-${seat.seat}`}>
+    <div
+      className={`badge${active ? ' active' : ''}${away ? ' away' : ''}`}
+      data-testid={`badge-${seat.seat}`}
+    >
       <span className="name">
         {seat.name}
         {view.dealer === seat.seat ? ' ●' : ''}
@@ -30,6 +37,11 @@ export function PlayerBadge({ seat, view, tricks }: PlayerBadgeProps): JSX.Eleme
       </span>
       {(isTaker || isPartner) && (
         <span className="role">{isTaker ? t.table.taker : t.table.partner}</span>
+      )}
+      {away && (
+        <span className="away-note">
+          {seat.awaitingReturn ? t.table_play.reconnecting : t.table_play.standIn}
+        </span>
       )}
     </div>
   );

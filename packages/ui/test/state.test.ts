@@ -7,6 +7,7 @@ import {
   parseCard,
   parseHand,
   type Card,
+  type PlayerView,
 } from '@tarot/engine';
 import { GameHost, newSession } from '@tarot/net';
 import { fr } from '../src/i18n/index.ts';
@@ -53,6 +54,13 @@ describe('labels', () => {
   });
 });
 
+/** The view for a seat at a table that has already been dealt. */
+function seatView(host: GameHost, seat: number): PlayerView {
+  const view = host.viewFor(seat);
+  if (!view) throw new Error('the table has not been dealt');
+  return view;
+}
+
 /** A host with the human on seat 0 and bots everywhere else. */
 function soloHost(bid: Bid, taker = 0): GameHost {
   const host = new GameHost({
@@ -93,20 +101,20 @@ describe('what the seat may do', () => {
       botDelayMs: 0,
       schedule: (fn) => fn(),
     });
-    const fresh = affordances(host.viewFor(0));
+    const fresh = affordances(seatView(host, 0));
     expect(fresh.myTurn).toBe(true);
     expect(fresh.bids).toEqual([Bid.Pass, Bid.Petite, Bid.Garde, Bid.GardeSans, Bid.GardeContre]);
 
     host.submit(0, { type: 'Bid', player: 0, bid: Bid.Garde });
-    const next = affordances(host.viewFor(1));
+    const next = affordances(seatView(host, 1));
     expect(next.bids).toEqual([Bid.Pass, Bid.GardeSans, Bid.GardeContre]);
     // It is not seat 0's turn any more, so seat 0 is offered nothing.
-    expect(affordances(host.viewFor(0)).bids).toEqual([]);
+    expect(affordances(seatView(host, 0)).bids).toEqual([]);
   });
 
   it('knows when you have played and the poignee window has shut', () => {
     const host = soloHost(Bid.GardeSans);
-    const view = host.viewFor(0);
+    const view = seatView(host, 0);
     expect(hasPlayed(view)).toBe(false);
     expect(affordances(view).ecartSize).toBe(6);
   });
@@ -159,14 +167,14 @@ describe('building an ecart', () => {
 describe('why a card is refused', () => {
   it('answers with the engine s own reason', () => {
     const host = soloHost(Bid.GardeSans);
-    let view = host.viewFor(0);
+    let view = seatView(host, 0);
     while (view.phase === 'chelem') {
       host.submit(view.currentPlayer, {
         type: 'AnnounceChelem',
         player: view.currentPlayer,
         announce: false,
       });
-      view = host.viewFor(0);
+      view = seatView(host, 0);
     }
     expect(view.phase).toBe('playing');
     const notInHand = DECK.find((c) => !view.hand.includes(c)) as Card;

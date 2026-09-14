@@ -1,9 +1,9 @@
-import type { HandResult } from '@tarot/engine';
+import type { HandResult, PlayerCount } from '@tarot/engine';
 import type { HandRecord, SeatInfo, SessionSnapshot } from './protocol.ts';
 
 export interface SessionInit {
   id: string;
-  playerCount: number;
+  playerCount: PlayerCount;
   seats: SeatInfo[];
   dealer: number;
 }
@@ -23,6 +23,7 @@ export function newSession(init: SessionInit): SessionSnapshot {
     handsDealt: 0,
     dealer: init.dealer,
     undoAvailable: false,
+    phase: 'lobby',
   };
 }
 
@@ -61,6 +62,7 @@ export function isSessionSnapshot(value: unknown): value is SessionSnapshot {
     Array.isArray(s.hands) &&
     s.totals.length === s.playerCount &&
     typeof s.dealer === 'number' &&
-    typeof s.undoAvailable === 'boolean'
+    typeof s.undoAvailable === 'boolean' &&
+    (s.phase === 'lobby' || s.phase === 'playing')
   );
 }

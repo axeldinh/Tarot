@@ -21,12 +21,12 @@ import { TrickArea, seatAnchor } from '../components/TrickArea.tsx';
 import { useI18n } from '../i18n/index.ts';
 import { bidLabel, illegalLabel } from '../state/labels.ts';
 import { affordances, ecartState, reasonFor } from '../state/moves.ts';
-import type { SoloGameApi } from '../state/useSoloGame.ts';
+import type { GameApi } from '../state/gameApi.ts';
 
 const DOT = '·';
 
 export interface TableScreenProps {
-  game: SoloGameApi;
+  game: GameApi;
   view: PlayerView;
   session: SessionSnapshot;
   onRules(): void;
@@ -115,7 +115,7 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       <div className="topbar">
         <span className="contract-chip">{contractChip}</span>
         <span className="spacer" />
-        {session.undoAvailable && (
+        {session.undoAvailable && game.undo && (
           <button type="button" className="small ghost" onClick={game.undo}>
             {t.table.undo}
           </button>

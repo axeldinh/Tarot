@@ -119,3 +119,77 @@ export class LocalNetwork {
     for (const endpoint of this.endpoints.values()) endpoint.emitPeer('peer-left', id);
   }
 }
+
+/**
+ * One transport made of several.
+ *
+ * The device running a table is both server and client: the other phones reach
+ * it over the radio, but its own player is right here. Rather than give the host
+ * a privileged path into the game — which would be a second code path, and the
+ * one least likely to be tested — its client talks over an in-process loopback,
+ * and the server listens to both at once through this.
+ */
+export function combineTransports(children: readonly Transport[]): Transport {
+  const owner = new Map<PeerId, Transport>();
+  const subscriptions: Unsubscribe[] = [];
+  const handlers = new Map<TransportEvent, Set<AnyTransportHandler>>();
+
+  const emit = (event: TransportEvent, from: PeerId, message?: unknown): void => {
+    for (const handler of handlers.get(event) ?? []) {
+      if (event === 'message') (handler as MessageHandler)(from, message);
+      else (handler as PeerHandler)(from);
+    }
+  };
+
+  for (const child of children) {
+    subscriptions.push(
+      child.on('message', (from, message) => {
+        // Remember the way back to whoever just spoke.
+        owner.set(from, child);
+        emit('message', from, message);
+      }),
+      child.on('peer-joined', (peer) => {
+        owner.set(peer, child);
+        emit('peer-joined', peer);
+      }),
+      child.on('peer-left', (peer) => {
+        owner.delete(peer);
+        emit('peer-left', peer);
+      }),
+    );
+  }
+
+  const first = children[0];
+  /* c8 ignore next */
+  if (!first) throw new Error('combineTransports needs at least one transport');
+
+  return {
+    role: first.role,
+    id: first.id,
+    send(to: PeerId | 'all', message: unknown): void {
+      if (to === 'all') {
+        for (const child of children) child.send('all', message);
+        return;
+      }
+      const child = owner.get(to);
+      if (child) {
+        child.send(to, message);
+        return;
+      }
+      // Not heard from yet: try everyone rather than drop it.
+      for (const candidate of children) candidate.send(to, message);
+    },
+    on(event: TransportEvent, handler: AnyTransportHandler): Unsubscribe {
+      const set = handlers.get(event) ?? new Set<AnyTransportHandler>();
+      set.add(handler);
+      handlers.set(event, set);
+      return () => set.delete(handler);
+    },
+    close(): void {
+      for (const off of subscriptions) off();
+      for (const child of children) child.close();
+    },
+  } as Transport;
+}
+
+type AnyTransportHandler = MessageHandler | PeerHandler;

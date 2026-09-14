@@ -75,6 +75,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @tarot/ui android:sync
       - run: pnpm --filter @tarot/ui check:android
+      # This also compiles the Nearby plugin, which is the only native code in
+      # the project and cannot be compiled where it was written.
       - name: Build the debug APK
         working-directory: packages/ui/android
         run: ./gradlew --no-daemon assembleDebug

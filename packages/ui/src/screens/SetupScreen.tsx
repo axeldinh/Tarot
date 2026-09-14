@@ -11,6 +11,7 @@ export interface SetupScreenProps {
   onResume(saved: SavedGame): void;
   onDiscardSaved(): void;
   onRules(): void;
+  onTablePlay(name: string): void;
 }
 
 const COUNTS: PlayerCount[] = [3, 4, 5];
@@ -22,6 +23,7 @@ export function SetupScreen({
   onResume,
   onDiscardSaved,
   onRules,
+  onTablePlay,
 }: SetupScreenProps): JSX.Element {
   const { t, lang, setLang } = useI18n();
   const [playerCount, setPlayerCount] = useState<PlayerCount>(4);
@@ -112,6 +114,12 @@ export function SetupScreen({
           }
         >
           {t.setup.start}
+        </button>
+        <button
+          type="button"
+          onClick={() => onTablePlay(name.trim() || t.setup.defaultName)}
+        >
+          {t.setup.table}
         </button>
         <button type="button" className="ghost" onClick={onRules}>
           {t.setup.rules}

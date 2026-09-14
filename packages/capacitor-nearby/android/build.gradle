@@ -1,0 +1,36 @@
+// Plain Java on purpose. The Capacitor Android template already compiles Java,
+// so the plugin adds no toolchain of its own: no Kotlin plugin, no jvmTarget to
+// keep in step with the app, nothing extra to go wrong in a build that cannot be
+// run on the machine this was written on. It is 250 lines of glue; Java is fine.
+ext {
+    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion')
+        ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
+    playServicesNearbyVersion = project.hasProperty('playServicesNearbyVersion')
+        ? rootProject.ext.playServicesNearbyVersion : '19.3.0'
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace "net.tarot.nearby"
+    compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdk project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 28
+        targetSdk project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "com.google.android.gms:play-services-nearby:$playServicesNearbyVersion"
+}

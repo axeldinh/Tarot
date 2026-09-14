@@ -22,16 +22,17 @@ Build order is the one in `docs/spec.md`. Work stops and reports after steps 3,
 | 5 | React UI, solo vs bots | ✅ |
 | 6 | PWA, offline service worker, deploy | ✅ |
 | 7 | Capacitor Android build | ⚠️ project set up and configured; the APK itself is built in CI, not here — see [Android](#android) |
-| 8 | Table play over the chosen transport | — (the host, protocol and `LocalTransport` are in place) |
+| 8 | Table play over the chosen transport | ⚠️ written and tested against a fake radio; **never run on two phones** — see [Table play](#table-play) |
 
 ## Layout
 
 ```
-packages/engine    pure TypeScript rules and scoring: no dependencies, no I/O
-packages/bots      AI, depends only on the engine
-packages/net       the authoritative host, the wire protocol, and LocalTransport
-packages/ui        React app: solo play against bots
-docs/              spec and architecture decisions
+packages/engine            rules and scoring: no dependencies, no I/O
+packages/bots              AI, depends only on the engine
+packages/net               the host, the wire protocol, and the transports
+packages/capacitor-nearby  the native bridge to Nearby Connections
+packages/ui                React app
+docs/                      spec and architecture decisions
 ```
 
 The engine is deliberately boring: a serialisable `GameState`, one `Action`
@@ -188,13 +189,50 @@ only ever holds a `TableClient`.
 ```
 TableScreen ─▶ TableClient ─▶ Transport ─▶ TableServer ─▶ GameHost ─▶ engine
                                   │
-                 LocalTransport (solo, one process)  /  p2p (step 9)
+                 LocalTransport          NearbyTransport
+                 (solo, one process)     (the other phones)
 ```
 
-The host also plays the bot seats, and plays a human seat whose device has
-dropped — which is the whole mechanism behind the reconnect handling the spec
-asks for; only the timeout policy is still to come. Swapping `LocalTransport`
-for the transport chosen in the ADR is what step 9 amounts to.
+Playing solo runs the whole of it: sitting down in a seat, being issued a token,
+the host starting the table. The only difference between a solo game and four
+people in a room is which transport is underneath — so every hand anybody plays
+alone exercises the table code.
+
+The device running a table is both server and client. Its own player is not on
+the radio, so they talk to the table over an in-process loopback and the server
+listens to both at once. That keeps the host from being a privileged path
+through the game loop — which would be a second code path, and the one least
+likely to be tested.
+
+## Table play
+
+Everyone in the same room, each on their own phone, with no internet. Start a
+table or join one nearby; empty seats can be filled with bots.
+
+**Reconnecting.** A radio link drops for all sorts of dull reasons, so a seat
+belongs to a *token*, not to an endpoint id — a phone that comes back gets a new
+endpoint and the same seat. When a device goes away the table **waits** for it,
+and only once the grace period runs out does a bot play the seat out. The seat
+keeps its name and its score throughout, and the moment the player returns the
+stand-in steps down, mid-hand if need be.
+
+**Permissions.** The app asks for nothing at install time. Bluetooth and Wi-Fi
+are requested the first time somebody opens the table screen, after a sentence
+explaining why a card game wants them, and each permission is bounded to the
+Android versions that actually use it. Somebody who only ever plays solo never
+sees the prompt.
+
+**What is proven, and what is not.** Everything above the radio is tested for
+real: seating, tokens, reconnection, the bot standing in and standing down, four
+clients playing a hand through and none of them ever receiving another seat's
+cards. Those tests run against a *fake radio* that models what Nearby
+Connections does — advertise, discover, connect, deliver a payload to one
+endpoint — and the transport, framing and protocol above it are the real ones.
+
+**It has never run on two phones.** That demo needs hardware this was built
+without, and it is the one thing a fake cannot stand in for. Until somebody
+closes the gate in [`docs/adr-transport.md`](docs/adr-transport.md), treat table
+play as written and tested but unproven.
 
 ### The web build
 
@@ -265,8 +303,8 @@ Two things follow from not having had a device:
 |---|---|---|---|
 | `engine` | 137 | 99.8% | 98.8% |
 | `bots` | 73 | 98.9% | 95.5% |
-| `net` | 24 | 99.1% | 89.7% |
-| `ui` | 63 | 97.8% | 88.7% |
+| `net` | 66 | 91.3% | 88.4% |
+| `ui` | 72 | 97.5% | 89.3% |
 
 The engine's threshold is the spec's 90%; the others are set a little lower on
 branches, where a defensive `catch` is not worth contorting a test for.

@@ -21,6 +21,7 @@
   "dependencies": {
     "@capacitor/core": "^8.5.2",
     "@tarot/bots": "workspace:*",
+    "@tarot/capacitor-nearby": "workspace:*",
     "@tarot/engine": "workspace:*",
     "@tarot/net": "workspace:*",
     "react": "^19.2.0",

@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createSoloGame, type ClientState, type SoloGame } from '@tarot/net';
 import type { Action } from '@tarot/engine';
+import type { GameApi } from './gameApi.ts';
 import { clearGame, saveGame, type GameConfig, type SavedGame } from './storage.ts';
 
-export interface SoloGameApi extends ClientState {
-  play(action: Action): void;
+export interface SoloGameApi extends GameApi {
+  /** Always present in solo play, which is the only place it exists. */
   undo(): void;
-  nextHand(): void;
-  dismissRejection(): void;
 }
 
-const EMPTY: ClientState = { view: null, session: null, rejection: null };
+const EMPTY: ClientState = { seat: null, token: null, view: null, session: null, rejection: null };
 
 /**
  * One human seat against bots, over `LocalTransport`.

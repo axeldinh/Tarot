@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { Bid, LAYOUT, legalCards, type Action, type Card } from '@tarot/engine';
+import {
+  Bid,
+  LAYOUT,
+  legalCards,
+  type Action,
+  type Card,
+  type PlayerView,
+} from '@tarot/engine';
 import { GameHost } from '@tarot/net';
 import { I18nContext, fr } from '../src/i18n/index.ts';
 import { TableScreen } from '../src/screens/TableScreen.tsx';
@@ -31,6 +38,8 @@ function table(options: { seed?: number; allowUndo?: boolean; playerCount?: 3 | 
 
   let rejection: SoloGameApi['rejection'] = null;
   const api = (): SoloGameApi => ({
+    seat: 0,
+    token: 'test',
     view: host.viewFor(0),
     session: host.getSession(),
     rejection,
@@ -65,14 +74,21 @@ function show(api: () => SoloGameApi) {
   );
 }
 
+/** The view for a seat at a table that has already been dealt. */
+function seatView(host: GameHost, seat: number): PlayerView {
+  const view = host.viewFor(seat);
+  if (!view) throw new Error('the table has not been dealt');
+  return view;
+}
+
 /** Bid, settle the chien and the chelem, then play on until the seat must follow suit. */
 function reachAFollowSuitDecision(host: GameHost): void {
   host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
-  while (host.viewFor(0).phase === 'chelem') {
+  while (seatView(host, 0).phase === 'chelem') {
     host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
   }
   for (let guard = 0; guard < 200; guard++) {
-    const view = host.viewFor(0);
+    const view = seatView(host, 0);
     if (view.phase !== 'playing') return;
     const legal = legalCards(view.hand, view.currentTrick?.plays ?? []);
     if (legal.length < view.hand.length) return; // some card is now illegal
@@ -105,10 +121,10 @@ describe('the table', () => {
   it('plays a legal card when one is tapped', () => {
     const { host, api } = table();
     reachAFollowSuitDecision(host);
-    const before = host.viewFor(0).hand.length;
+    const before = seatView(host, 0).hand.length;
     const { container } = show(api);
     fireEvent.click(container.querySelector('.hand-card.playable') as HTMLElement);
-    expect(host.viewFor(0).hand.length).toBeLessThan(before);
+    expect(seatView(host, 0).hand.length).toBeLessThan(before);
   });
 
   it('lets a solo player take the last card back, and never at a real table', () => {
@@ -131,9 +147,9 @@ describe('the table', () => {
       </I18nContext.Provider>,
     );
     const undo = screen.getByRole('button', { name: 'Annuler' });
-    const handBefore = host.viewFor(0).hand.length;
+    const handBefore = seatView(host, 0).hand.length;
     fireEvent.click(undo);
-    expect(host.viewFor(0).hand.length).toBe(handBefore + 1);
+    expect(seatView(host, 0).hand.length).toBe(handBefore + 1);
   });
 
   it('hides the undo at a table that does not allow it', () => {
@@ -150,7 +166,7 @@ describe('the table', () => {
     for (let seed = 1; seed < 60 && host === null; seed++) {
       const candidate = table({ seed: seed * 977 });
       candidate.host.submit(0, { type: 'Bid', player: 0, bid: Bid.Garde });
-      if (candidate.host.viewFor(0).phase === 'discard') {
+      if (seatView(candidate.host, 0).phase === 'discard') {
         host = candidate.host;
         apiOf = candidate.api;
       }
@@ -219,7 +235,7 @@ describe('the table', () => {
     // A hand big enough to show a poignee is rare; build one by hand instead.
     const { host, api } = table();
     host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
-    while (host.viewFor(0).phase === 'chelem') {
+    while (seatView(host, 0).phase === 'chelem') {
       host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
     }
     const game = api();

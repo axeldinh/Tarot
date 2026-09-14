@@ -1,4 +1,4 @@
-import type { Action, HandResult, PlayerView } from '@tarot/engine';
+import type { Action, HandResult, PlayerCount, PlayerView } from '@tarot/engine';
 
 /** How a seat is filled. */
 export type SeatKind = 'human' | 'bot';
@@ -7,16 +7,27 @@ export interface SeatInfo {
   seat: number;
   name: string;
   kind: SeatKind;
-  /** Present for bot seats. */
+  /** Present for bot seats, and for a human seat a bot has taken over. */
   level?: string;
-  /** False while a claimed seat is away; the host plays it with a bot. */
+  /** False while a claimed seat's device is away. */
   connected: boolean;
+  /**
+   * True between a device dropping and the host giving up on it. The table
+   * waits during this window; once it closes a bot plays the seat out.
+   */
+  awaitingReturn: boolean;
+  /** True once a bot is playing a seat that belongs to a person. */
+  standIn: boolean;
 }
+
+/** A table is either still being filled, or being played. */
+export type TablePhase = 'lobby' | 'playing';
 
 /** Running totals and the hand-by-hand history for one sitting. */
 export interface SessionSnapshot {
   id: string;
-  playerCount: number;
+  playerCount: PlayerCount;
+  phase: TablePhase;
   seats: SeatInfo[];
   /** Cumulative score per seat. Always sums to zero. */
   totals: number[];
@@ -39,13 +50,50 @@ export interface HandRecord {
   totalsAfter: number[];
 }
 
+/**
+ * What a device shows about itself when it sits down. `token` is how a seat
+ * survives a reconnection: endpoint ids change when a radio link drops and comes
+ * back, so the seat is held by this instead.
+ */
+export interface JoinRequest {
+  name: string;
+  /** Issued by the host on the first join; sent back to reclaim the seat. */
+  token?: string;
+  /** Which seat to take. Omitted means "any free one". */
+  seat?: number;
+}
+
 export type ClientMessage =
-  | { type: 'hello'; seat: number }
-  | { type: 'intent'; seat: number; action: Action }
-  | { type: 'undo'; seat: number }
-  | { type: 'next-hand'; seat: number };
+  | { type: 'join'; join: JoinRequest }
+  | { type: 'leave' }
+  | { type: 'intent'; action: Action }
+  | { type: 'undo' }
+  | { type: 'next-hand' }
+  /** Host device only: fill or empty a seat before the table starts. */
+  | { type: 'set-seat'; seat: number; kind: SeatKind; level?: string }
+  /** Host device only. */
+  | { type: 'start' };
 
 export type ServerMessage =
+  | { type: 'seated'; seat: number; token: string }
   | { type: 'view'; seat: number; view: PlayerView }
   | { type: 'session'; session: SessionSnapshot }
-  | { type: 'rejected'; seat: number; code: string; message: string };
+  | { type: 'rejected'; code: string; message: string };
+
+/** What a device advertises so others can find the table. */
+export interface TableAdvert {
+  /** Stable id for the table, so a reconnect finds the same one. */
+  id: string;
+  /** Shown in the list of nearby tables. */
+  name: string;
+  playerCount: PlayerCount;
+  /** Seats still waiting for somebody. */
+  freeSeats: number;
+  phase: TablePhase;
+}
+
+/** A table someone nearby is advertising. */
+export interface DiscoveredTable extends TableAdvert {
+  /** How to reach it on the transport that found it. */
+  endpoint: string;
+}

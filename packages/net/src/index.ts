@@ -4,4 +4,5 @@ export * from './session.ts';
 export * from './host.ts';
 export * from './server.ts';
 export * from './client.ts';
+export * from './nearby.ts';
 export * from './solo.ts';

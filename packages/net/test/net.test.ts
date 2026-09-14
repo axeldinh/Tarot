@@ -16,9 +16,17 @@ import {
 /** Run scheduled work straight away, so tests never wait on a bot. */
 const immediate = (fn: () => void): void => fn();
 
+/** The view for a seat at a table that has already been dealt. */
+function seatView(host: GameHost, seat: number): PlayerView {
+  const view = host.viewFor(seat);
+  if (!view) throw new Error('the table has not been dealt');
+  return view;
+}
+
 const botSeats = (n: number): SeatSpec[] =>
   Array.from({ length: n }, (_, i) => ({ name: `Bot ${i}`, kind: 'bot' as const, level: 'debutant' as const }));
 
+/** Seat 0 is a person already sitting down; the rest are bots. */
 function soloSeats(n: number): SeatSpec[] {
   const seats = botSeats(n);
   seats[0] = { name: 'Moi', kind: 'human' };
@@ -99,7 +107,13 @@ describe('the session scoreboard', () => {
     let session = newSession({
       id: 's1',
       playerCount: 4,
-      seats: soloSeats(4).map((s, seat) => ({ ...s, seat, connected: true })),
+      seats: soloSeats(4).map((s, seat) => ({
+        ...s,
+        seat,
+        connected: true,
+        awaitingReturn: false,
+        standIn: false,
+      })),
       dealer: 0,
     });
     expect(session.totals).toEqual([0, 0, 0, 0]);
@@ -173,7 +187,7 @@ describe('the host', () => {
       schedule: immediate,
     });
     expect(host.handOver).toBe(false);
-    expect(host.viewFor(0).currentPlayer).toBe(0);
+    expect(seatView(host, 0).currentPlayer).toBe(0);
     expect(host.nextHand()).toMatchObject({ code: 'hand-in-progress' });
   });
 
@@ -204,7 +218,7 @@ describe('the host', () => {
       botDelayMs: 0,
       schedule: immediate,
     });
-    const view: PlayerView = host.viewFor(0);
+    const view: PlayerView = seatView(host, 0);
     expect(Object.keys(view)).not.toContain('hands');
     expect(Object.keys(view)).not.toContain('piles');
     expect(view.hand).toHaveLength(LAYOUT[5].cardsPerPlayer);
@@ -217,14 +231,16 @@ describe('the host', () => {
       seed: 3,
       dealer: 3,
       botDelayMs: 0,
+      // `immediate` runs the grace timer at once, so the seat is given up
+      // straight away; the waiting itself is covered in table.test.ts.
       schedule: immediate,
+      reconnectGraceMs: 1,
     });
     expect(host.handOver).toBe(false);
-    host.setConnected(0, false);
+    host.markAway(0);
     // With nobody left to wait for, the hand runs to the end on its own.
     expect(host.handOver).toBe(true);
-    host.setConnected(0, true);
-    expect(host.getSession().seats[0]?.connected).toBe(true);
+    expect(host.getSession().seats[0]?.standIn).toBe(true);
   });
 });
 
@@ -244,8 +260,8 @@ describe('taking a card back', () => {
   function reachPlay(host: GameHost): void {
     const bot = makeBot('debutant', { seed: 1 });
     let guard = 0;
-    while (!host.handOver && host.viewFor(0).phase !== 'playing' && guard++ < 50) {
-      const view = host.viewFor(0);
+    while (!host.handOver && seatView(host, 0).phase !== 'playing' && guard++ < 50) {
+      const view = seatView(host, 0);
       if (view.currentPlayer !== 0) break;
       host.submit(0, bot.decide(view));
     }
@@ -254,20 +270,20 @@ describe('taking a card back', () => {
   it('rewinds the human s last card and everything the bots played after it', () => {
     const host = soloHost(true);
     reachPlay(host);
-    const view = host.viewFor(0);
+    const view = seatView(host, 0);
     expect(view.phase).toBe('playing');
     expect(host.canUndo).toBe(false);
 
-    const before = host.viewFor(0);
+    const before = seatView(host, 0);
     const card = before.hand[0] as number;
     // Only act when it is actually our turn to play.
     if (before.currentPlayer !== 0) return;
     expect(host.submit(0, { type: 'PlayCard', player: 0, card } as Action)).toBeNull();
     expect(host.canUndo).toBe(true);
-    expect(host.viewFor(0).hand).not.toContain(card);
+    expect(seatView(host, 0).hand).not.toContain(card);
 
     expect(host.undo(0)).toBeNull();
-    const after = host.viewFor(0);
+    const after = seatView(host, 0);
     expect(after.hand).toContain(card);
     expect(after.currentPlayer).toBe(0);
     expect(after.tricks).toEqual(before.tricks);
@@ -287,17 +303,20 @@ describe('a seat talking to the host over a transport', () => {
     const network = new LocalNetwork();
     const server = new TableServer(network.host, {
       playerCount: 4,
-      seats: soloSeats(4),
+      seats: [{ name: 'Moi', kind: 'human', open: true }, ...botSeats(3)],
       seed: 3,
       dealer: 3,
       botDelayMs: 0,
       schedule: immediate,
+      start: 'manual',
     });
-    const client = new TableClient(network.connect('seat-0'), 0);
+    const client = new TableClient(network.connect('seat-0'), { name: 'Moi', seat: 0 });
     const seen = vi.fn();
     client.subscribe(seen);
+    client.start();
 
     const state = client.getState();
+    expect(state.seat).toBe(0);
     expect(state.view?.self).toBe(0);
     expect(state.session?.totals).toEqual([0, 0, 0, 0]);
     expect(state.view?.phase).toBe('bidding');
@@ -312,13 +331,15 @@ describe('a seat talking to the host over a transport', () => {
     const network = new LocalNetwork();
     new TableServer(network.host, {
       playerCount: 4,
-      seats: soloSeats(4),
+      seats: [{ name: 'Moi', kind: 'human', open: true }, ...botSeats(3)],
       seed: 3,
       dealer: 3,
       botDelayMs: 0,
       schedule: immediate,
+      start: 'manual',
     });
-    const client = new TableClient(network.connect('seat-0'), 0);
+    const client = new TableClient(network.connect('seat-0'), { name: 'Moi' });
+    client.start();
     client.play({ type: 'PlayCard', player: 0, card: 0 });
     expect(client.getState().rejection).toMatchObject({ code: 'wrong-phase' });
     client.dismissRejection();
@@ -331,14 +352,17 @@ describe('a seat talking to the host over a transport', () => {
     const network = new LocalNetwork();
     const server = new TableServer(network.host, {
       playerCount: 4,
-      seats: soloSeats(4),
+      seats: [{ name: 'Moi', kind: 'human', open: true }, ...botSeats(3)],
       seed: 3,
       dealer: 3,
       botDelayMs: 0,
       schedule: immediate,
+      reconnectGraceMs: 1,
+      start: 'manual',
     });
     const transport = network.connect('seat-0');
-    const client = new TableClient(transport, 0);
+    const client = new TableClient(transport, { name: 'Moi' });
+    client.start();
     expect(server.host.handOver).toBe(false);
     client.close();
     expect(server.host.handOver).toBe(true);
@@ -393,6 +417,29 @@ describe('a solo game', () => {
     expect(seats.map((s) => s.name)).toEqual(['A', 'B', 'C', 'Joueur 4', 'Joueur 5']);
     expect(seats[0]?.level).toBe('normal');
     game.close();
+  });
+
+  it('deals even when the player is not sitting in seat zero', () => {
+    // The solo device runs the table, wherever its player happens to sit; an
+    // owner check that assumed seat 0 would leave this game stuck in the lobby.
+    for (const seat of [0, 1, 2, 3]) {
+      const game = createSoloGame({
+        playerCount: 4,
+        seat,
+        level: 'debutant',
+        names: [],
+        seed: 5,
+        dealer: 3,
+        botDelayMs: 0,
+        schedule: immediate,
+      });
+      const state = game.client.getState();
+      expect(state.seat).toBe(seat);
+      expect(state.session?.phase).toBe('playing');
+      expect(state.view).not.toBeNull();
+      expect(state.rejection).toBeNull();
+      game.close();
+    }
   });
 
   it('pauses for a natural moment by default', () => {

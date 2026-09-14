@@ -23,8 +23,8 @@ const check = (ok, message) => {
 
 check(existsSync(android), 'no android project — run `npx cap add android`');
 if (existsSync(android)) {
-  const variables = readFileSync(`${android}variables.gradle`, 'utf8');
-  const minSdk = /minSdkVersion\s*=\s*(\d+)/.exec(variables)?.[1];
+  const gradleVars = readFileSync(`${android}variables.gradle`, 'utf8');
+  const minSdk = /minSdkVersion\s*=\s*(\d+)/.exec(gradleVars)?.[1];
   check(Number(minSdk) >= 28, `minSdkVersion is ${minSdk}; the spec targets Android 9 (28)`);
 
   const manifest = readFileSync(`${android}app/src/main/AndroidManifest.xml`, 'utf8');
@@ -35,10 +35,25 @@ if (existsSync(android)) {
   const permissions = [...manifest.matchAll(/uses-permission android:name="([^"]+)"/g)].map(
     (m) => m[1],
   );
-  // Nothing beyond the template's INTERNET until step 9 adds a transport.
+  // The app itself asks for nothing but the template's INTERNET. The Bluetooth
+  // and Wi-Fi permissions table play needs are declared by the Nearby plugin's
+  // own manifest and merged in at build time, each bounded to the Android
+  // versions that actually use it.
   check(
     permissions.every((p) => p === 'android.permission.INTERNET'),
-    `unexpected permissions: ${permissions.join(', ')}`,
+    `unexpected permissions in the app manifest: ${permissions.join(', ')}`,
+  );
+
+  // The native side of table play has to actually be in the build.
+  const settings = readFileSync(`${android}capacitor.settings.gradle`, 'utf8');
+  check(
+    settings.includes('tarot-capacitor-nearby'),
+    'the Nearby plugin is not part of the Android build; run `cap sync android`',
+  );
+  const variables = readFileSync(`${android}variables.gradle`, 'utf8');
+  check(
+    /playServicesNearbyVersion/.test(variables),
+    'variables.gradle does not pin the Nearby library version',
   );
 
   const config = JSON.parse(readFileSync(`${root}android/app/src/main/assets/capacitor.config.json`, 'utf8'));

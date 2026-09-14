@@ -31,19 +31,24 @@ export interface SoloGame {
  * One human, the rest bots, all in one process over `LocalTransport`.
  *
  * Solo play goes through exactly the same host, protocol and client as a real
- * table; the only difference is which transport is underneath. That is what
- * makes the offline multiplayer in step 9 a swap rather than a rewrite.
+ * table, down to sitting down in a seat and starting the table; the only
+ * difference is which transport is underneath. That is what makes the offline
+ * multiplayer a swap rather than a rewrite — and it means solo play exercises
+ * the table code every time somebody plays a hand.
  */
 export function createSoloGame(options: SoloOptions): SoloGame {
   const seat = options.seat ?? 0;
   const seats: SeatSpec[] = Array.from({ length: options.playerCount }, (_, i) => ({
     name: options.names[i] ?? `Joueur ${i + 1}`,
     kind: i === seat ? 'human' : 'bot',
-    ...(i === seat ? {} : { level: options.level }),
+    ...(i === seat ? { open: true } : { level: options.level }),
   }));
 
   const network = new LocalNetwork();
+  const peer = `seat-${seat}`;
   const server = new TableServer(network.host, {
+    // This device is the table, wherever its player happens to be sitting.
+    hostPeer: peer,
     playerCount: options.playerCount,
     seats,
     seed: options.seed,
@@ -53,8 +58,15 @@ export function createSoloGame(options: SoloOptions): SoloGame {
     ...(options.initialSession ? { initialSession: options.initialSession } : {}),
     botDelayMs: options.botDelayMs ?? 'natural',
     ...(options.schedule ? { schedule: options.schedule } : {}),
+    start: 'manual',
   });
-  const client = new TableClient(network.connect(`seat-${seat}`), seat);
+
+  const client = new TableClient(network.connect(peer), {
+    name: options.names[seat] ?? 'Vous',
+    seat,
+  });
+  // Nobody else is coming, so deal at once.
+  client.start();
 
   return {
     client,
