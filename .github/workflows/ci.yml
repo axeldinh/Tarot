@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  engine:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm test:coverage
+
       - name: Rules fuzzer (10 000 hands per table size, random legal play)
         run: pnpm --filter @tarot/engine simulate -- --games 10000
 
@@ -31,3 +32,10 @@ jobs:
         run: |
           pnpm --filter @tarot/bots simulate -- --games 100 --players 4 --level normal
           pnpm --filter @tarot/bots simulate -- --games 10 --players 4 --level confirme
+
+      - name: Web build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: packages/ui/dist
+          if-no-files-found: error

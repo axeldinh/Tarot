@@ -1,0 +1,555 @@
+/* One-handed portrait first. Everything is sized from the card width so the
+   whole table scales together on a small screen. */
+:root {
+  --card-w: 58px;
+  --gutter: 10px;
+
+  --felt: #14532d;
+  --felt-deep: #0d3a20;
+  --felt-edge: #0a2e1a;
+  --ink: #f2f7f3;
+  --ink-dim: #a9c4b3;
+  --accent: #f0b429;
+  --danger: #e05252;
+
+  --card-bg: #fdfcf7;
+  --card-edge: #b9b3a3;
+  --suit-black: #1c1f24;
+  --suit-red: #c0392b;
+  --trump-bg: #eef0fb;
+  --trump-ink: #3b3f8f;
+  --excuse-bg: #fff6e0;
+  --excuse-ink: #a6761d;
+  --bout: #f0b429;
+  --back-bg: #2a4d7a;
+  --back-edge: #7fa2cc;
+
+  --panel: rgba(4, 28, 15, 0.86);
+  --panel-solid: #0f3d24;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--felt-deep);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+  background: radial-gradient(ellipse at 50% 38%, var(--felt) 0%, var(--felt-deep) 72%);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* --- card faces --------------------------------------------------------- */
+.card-index {
+  font: bold 13px/1 system-ui, sans-serif;
+  text-anchor: middle;
+}
+.card-index-flipped {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(180deg);
+}
+.card-index-suit {
+  font-size: 11px;
+  text-anchor: middle;
+}
+.card-court {
+  font: bold 24px/1 system-ui, sans-serif;
+  text-anchor: middle;
+}
+.card-trump-number {
+  font: bold 30px/1 system-ui, sans-serif;
+  text-anchor: middle;
+}
+.card-name {
+  font: 600 7px/1 system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+
+/* --- header ------------------------------------------------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px var(--gutter);
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex: none;
+}
+.topbar h1 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+}
+.topbar .spacer {
+  flex: 1;
+}
+.contract-chip {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(240, 180, 41, 0.16);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* --- buttons ------------------------------------------------------------ */
+button {
+  font: inherit;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 9px 14px;
+  min-height: 42px;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #22180a;
+  font-weight: 600;
+}
+button.ghost {
+  background: transparent;
+}
+button.small {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+/* --- table -------------------------------------------------------------- */
+.table {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* A quiet oval so the empty felt reads as a table rather than as nothing. */
+.table::before {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 8%;
+  bottom: 8%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.05), transparent 70%);
+  pointer-events: none;
+}
+.seat {
+  position: absolute;
+  z-index: 2;
+  max-width: 38%;
+}
+.seat-top {
+  max-width: 60%;
+}
+.badge {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 5px 8px;
+  min-width: 72px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.badge.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.badge .name {
+  font-weight: 600;
+  font-size: 12px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.badge .meta {
+  color: var(--ink-dim);
+}
+.badge .role {
+  color: var(--accent);
+  display: block;
+}
+
+.trick {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.chien {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+}
+.chien .cards {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.chien .caption {
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-align: center;
+}
+.trick-card {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: all 220ms ease;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+.trick-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-dim);
+  font-size: 13px;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* --- action bar --------------------------------------------------------- */
+.actions {
+  flex: none;
+  padding: 8px var(--gutter);
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.actions .prompt {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.actions .row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.actions .row button {
+  flex: 1 1 auto;
+  min-width: 84px;
+}
+
+/* --- hand --------------------------------------------------------------- */
+.hand {
+  flex: none;
+  padding: 22px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: calc(var(--card-w) * 1.53 + 52px);
+  overflow: visible;
+  scrollbar-width: none;
+}
+.hand::-webkit-scrollbar {
+  display: none;
+}
+.hand-inner {
+  display: flex;
+  align-items: flex-end;
+  /* The fan swings the outer cards sideways, so the row is laid out inside a
+     narrower box than the screen and the swing takes up the rest. A legal card
+     is given WIDE_FACTOR times the width of a dimmed one, and the unit shrinks
+     to keep the whole hand inside the same box. */
+  --room: calc(min(100vw, 640px) - 2 * var(--gutter) - var(--card-w) - 82px);
+  --unit: calc(var(--room) / max(var(--narrow, var(--n)) + 2.4 * var(--wide, 0) - 1, 1));
+  --step: min(var(--card-w), var(--unit));
+  --step-wide: min(var(--card-w), calc(var(--unit) * 2.4));
+}
+.hand-card {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  border-radius: 6px;
+  transition: transform 140ms ease, filter 140ms ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  display: block;
+  transform-origin: 50% 210%;
+  transform: rotate(var(--angle, 0deg)) translateY(calc(var(--arc, 0px) + var(--lift, 0px)));
+}
+.hand-card + .hand-card {
+  margin-left: calc(var(--step) - var(--card-w));
+}
+.hand-card.playable + .hand-card,
+.hand-card + .hand-card.playable {
+  margin-left: calc(var(--step-wide) - var(--card-w));
+}
+.hand-card.playable {
+  cursor: pointer;
+  /* Legal cards stand proud of the rest. They are also stacked above the dimmed
+     ones, so a card you are allowed to play is never buried under one you are
+     not and out of reach of a thumb. */
+  --lift: -10px;
+}
+.hand-card.playable:hover,
+.hand-card.lifted {
+  --lift: -24px;
+}
+.hand-card.blocked {
+  filter: grayscale(0.8) brightness(0.55);
+  cursor: not-allowed;
+}
+.hand-card.chosen {
+  --lift: -28px;
+}
+.hand-card.chosen svg {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 5px;
+}
+
+/* --- toast -------------------------------------------------------------- */
+.actions-wrap {
+  position: relative;
+  flex: none;
+}
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 10px;
+  transform: translateX(-50%);
+  background: var(--danger);
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  max-width: calc(100% - 24px);
+  text-align: center;
+}
+
+/* --- sheets and screens ------------------------------------------------- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+.sheet-inner {
+  background: var(--panel-solid);
+  width: 100%;
+  max-width: 640px;
+  max-height: 92%;
+  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+  padding: 16px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px var(--gutter) calc(24px + env(safe-area-inset-bottom));
+}
+h2 {
+  font-size: 19px;
+  margin: 0 0 12px;
+}
+h3 {
+  font-size: 14px;
+  margin: 18px 0 6px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+.field > label {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.choices {
+  display: flex;
+  gap: 6px;
+}
+.choices button {
+  flex: 1;
+}
+.choices button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #22180a;
+  font-weight: 600;
+}
+input[type='text'] {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 42px;
+}
+
+/* --- score table -------------------------------------------------------- */
+.lines {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+}
+.line .label {
+  color: var(--ink-dim);
+}
+.line .value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.line.total .value,
+.line.total .label {
+  color: var(--accent);
+  font-size: 16px;
+}
+.verdict {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin: 12px 0;
+  text-align: center;
+}
+.verdict.made {
+  background: rgba(56, 161, 105, 0.22);
+  color: #7ee2a8;
+}
+.verdict.failed {
+  background: rgba(224, 82, 82, 0.18);
+  color: #ff9b9b;
+}
+.note {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin: 8px 0 0;
+}
+table.scores {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+table.scores th,
+table.scores td {
+  padding: 6px 4px;
+  text-align: right;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+table.scores th:first-child,
+table.scores td:first-child {
+  text-align: left;
+}
+.pos {
+  color: #7ee2a8;
+}
+.neg {
+  color: #ff9b9b;
+}
+
+.rules p,
+.rules li {
+  font-size: 14px;
+  color: #dce8e0;
+}
+.rules ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.rules table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.rules th,
+.rules td {
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+.rules th {
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.centred {
+  text-align: center;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.muted {
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+.shown-cards {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+@media (min-width: 420px) {
+  :root {
+    --card-w: 64px;
+  }
+}

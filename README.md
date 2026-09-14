@@ -19,18 +19,18 @@ Build order is the one in `docs/spec.md`. Work stops and reports after steps 3,
 | 2 | Scoring + tests | ✅ |
 | 3 | 3 and 5 players, called king | ✅ (pulled forward — the scoring tests need all three table sizes) |
 | 4 | Bots + headless simulation | ✅ |
-| 5 | React UI, solo vs bots | — |
+| 5 | React UI, solo vs bots | ✅ |
 | 6 | PWA, offline service worker, deploy | — |
 | 7 | Capacitor Android build | — |
-| 8 | Table play over the chosen transport | — |
+| 8 | Table play over the chosen transport | — (the host, protocol and `LocalTransport` are in place) |
 
 ## Layout
 
 ```
 packages/engine    pure TypeScript rules and scoring: no dependencies, no I/O
 packages/bots      AI, depends only on the engine
-packages/ui        React app                                        (not yet)
-packages/net       transport abstraction + implementations          (not yet)
+packages/net       the authoritative host, the wire protocol, and LocalTransport
+packages/ui        React app: solo play against bots
 docs/              spec and architecture decisions
 ```
 
@@ -48,7 +48,7 @@ pnpm typecheck
 pnpm build
 ```
 
-Engine alone:
+Per package:
 
 ```sh
 pnpm --filter @tarot/engine test
@@ -142,15 +142,83 @@ path a networked table will take. CI runs 10 000 hands per table size at
 Débutant plus smaller runs of the two searching levels, which are far slower per
 move.
 
+## The app
+
+<p>
+  <img src="docs/screens/setup.png" alt="Setup screen" width="240" />
+  <img src="docs/screens/table.png" alt="Table during play" width="240" />
+  <img src="docs/screens/score.png" alt="Score breakdown" width="240" />
+</p>
+
+French by default, English available, portrait phone first. Card faces are drawn
+from scratch as SVG — no deck artwork, nothing traced: suits use the standard
+pips, trumps are numbered tiles in their own colour, and the three bouts carry a
+small marker.
+
+A few things worth knowing about the table screen:
+
+- **Legal moves are obvious.** Illegal cards are dimmed and inert and say why
+  when tapped ("vous devez monter à l'atout"). Legal cards are lifted, are given
+  more of the fan's width than the rest, and are stacked above the dimmed ones —
+  a card you are allowed to play is never buried under one you are not.
+- **The chien is turned face up** in the middle of the table on a Petite or a
+  Garde, for everyone, exactly as the rules say. The écart is built by tapping,
+  and the cards the rules protect refuse the tap with a reason.
+- **The score breakdown** after every hand lists points, bouts, target,
+  difference, multiplier, every bonus, and who pays whom. It is the screen people
+  argue over, so nothing is rolled up.
+- **Undo** takes back your last card and everything the bots played after it. It
+  appears in solo play only; the host refuses it outright at a real table.
+- The rules reference and the scoring cheat sheet are built in, in both
+  languages.
+
+```sh
+pnpm --filter @tarot/ui dev        # http://localhost:5173
+pnpm --filter @tarot/ui build      # static site in packages/ui/dist
+pnpm --filter @tarot/ui preview
+```
+
+## How a seat talks to the table
+
+Solo play is not a special case. `packages/net` holds the authoritative host —
+it owns the deal and the game state, and hands each seat a `PlayerView` and
+nothing else, so no screen can render a card it is not entitled to see. The UI
+only ever holds a `TableClient`.
+
+```
+TableScreen ─▶ TableClient ─▶ Transport ─▶ TableServer ─▶ GameHost ─▶ engine
+                                  │
+                 LocalTransport (solo, one process)  /  p2p (step 9)
+```
+
+The host also plays the bot seats, and plays a human seat whose device has
+dropped — which is the whole mechanism behind the reconnect handling the spec
+asks for; only the timeout policy is still to come. Swapping `LocalTransport`
+for the transport chosen in the ADR is what step 9 amounts to.
+
 ### Building the app
 
-Not yet — there is no UI. When there is:
+- **Web:** `pnpm --filter @tarot/ui build`, then deploy `packages/ui/dist` to
+  GitHub Pages, Netlify or Cloudflare Pages. Static hosting, no backend. The
+  build uses relative asset paths so it works from a subdirectory; set
+  `VITE_BASE=/` for a domain root. It is **not yet an installable PWA** — there
+  is no service worker, so it does not run offline after a reload. That is
+  step 7.
+- **Android APK:** not yet — Capacitor is step 8. When it lands:
+  `pnpm --filter @tarot/ui build && npx cap sync android && npx cap open android`,
+  then Build → Generate Signed Bundle/APK. Target is Android 9+.
 
-- **Web / PWA:** `pnpm --filter @tarot/ui build`, then deploy `packages/ui/dist`
-  to GitHub Pages, Netlify or Cloudflare Pages. Static hosting, no backend.
-- **Android APK:** `pnpm --filter @tarot/ui build && npx cap sync android && npx
-  cap open android`, then Build → Generate Signed Bundle/APK. Target is
-  Android 9+.
+## Tests
+
+| Package | Tests | Statements | Branches |
+|---|---|---|---|
+| `engine` | 137 | 99.8% | 98.8% |
+| `bots` | 73 | 98.9% | 95.5% |
+| `net` | 24 | 99.1% | 89.7% |
+| `ui` | 63 | 97.8% | 88.7% |
+
+The engine's threshold is the spec's 90%; the others are set a little lower on
+branches, where a defensive `catch` is not worth contorting a test for.
 
 ## Rules notes
 
