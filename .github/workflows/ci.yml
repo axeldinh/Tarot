@@ -72,6 +72,14 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default package list asks for `tools`, which Google
+          # has removed from the SDK repository: sdkmanager reports "Failed to
+          # find package 'tools'" and the step fails before anything is built.
+          # The runner image already ships the platforms and build-tools, and
+          # the Gradle plugin downloads whatever else it needs against the
+          # licences this action accepts, so nothing is lost by not asking.
+          packages: platform-tools
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @tarot/ui android:sync
       - run: pnpm --filter @tarot/ui check:android
