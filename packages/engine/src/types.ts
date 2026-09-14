@@ -148,9 +148,16 @@ export interface GameState {
 
   /** Private: `hands[p]` must never be sent to anyone but player `p`. */
   hands: Card[][];
-  /** Private until revealed (Petite / Garde). */
+  /** Private until revealed (Petite / Garde). Emptied once the taker takes it in. */
   chien: Card[];
   chienRevealed: boolean;
+  /**
+   * The chien as it was turned face up on a Petite or a Garde. Public for the
+   * rest of the hand — everyone at the table saw those cards go into the taker's
+   * hand, and knowing they are now in his hand or his ecart is ordinary
+   * card-table memory, not hidden information.
+   */
+  revealedChien: Card[];
 
   bids: (Bid | null)[];
   currentPlayer: number;
@@ -197,6 +204,8 @@ export interface PlayerView {
   hand: Card[];
   /** Face up only for Petite / Garde, and only between reveal and discard. */
   chien: Card[] | null;
+  /** What the chien held when it was turned up, for the rest of the hand. */
+  revealedChien: Card[];
   bids: (Bid | null)[];
   currentPlayer: number;
   taker: number | null;

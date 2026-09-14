@@ -19,5 +19,15 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm test:coverage
-      - name: Headless simulation (10 000 hands per table size)
+      - name: Rules fuzzer (10 000 hands per table size, random legal play)
         run: pnpm --filter @tarot/engine simulate -- --games 10000
+
+      - name: Bot-versus-bot simulation (10 000 hands per table size)
+        run: pnpm --filter @tarot/bots simulate -- --games 10000 --level debutant
+
+      # The searching levels are far slower per move, so they get a sanity run
+      # rather than the full sweep. The 10 000-hand bar above is the real net.
+      - name: Bot-versus-bot simulation, with search
+        run: |
+          pnpm --filter @tarot/bots simulate -- --games 100 --players 4 --level normal
+          pnpm --filter @tarot/bots simulate -- --games 10 --players 4 --level confirme

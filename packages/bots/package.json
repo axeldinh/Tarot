@@ -1,0 +1,23 @@
+{
+  "name": "@tarot/bots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tarot AI. Depends only on the engine, and only ever sees a PlayerView.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "simulate": "node --experimental-strip-types scripts/simulate.ts",
+    "calibrate": "node --experimental-strip-types scripts/calibrate.ts"
+  },
+  "dependencies": {
+    "@tarot/engine": "workspace:*"
+  }
+}

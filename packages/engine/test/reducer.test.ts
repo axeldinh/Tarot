@@ -97,6 +97,10 @@ describe('the chien', () => {
     expect(s.hands[1]).toHaveLength(18);
     expect(s.ecart).toEqual(ecart);
     expect(s.phase).toBe('chelem');
+    // Everyone saw the chien, and goes on knowing what was in it.
+    expect(s.revealedChien).toHaveLength(6);
+    expect(playerView(s, 2).chien).toBeNull();
+    expect(playerView(s, 2).revealedChien).toEqual(s.revealedChien);
     expect(playerView(s, 1).ecart).toEqual(ecart);
     expect(playerView(s, 2).ecart).toBeNull();
   });
@@ -108,6 +112,7 @@ describe('the chien', () => {
       expect(s.chienRevealed).toBe(false);
       expect(s.chien).toHaveLength(6);
       expect(playerView(s, 1).chien).toBeNull();
+      expect(playerView(s, 1).revealedChien).toEqual([]);
       expect(s.hands[1]).toHaveLength(18);
     }
   });

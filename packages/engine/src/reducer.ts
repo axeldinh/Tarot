@@ -81,6 +81,7 @@ export function createHandFrom(options: ExplicitHandOptions): GameState {
     hands: hands.map((h) => [...h]),
     chien: [...chien],
     chienRevealed: false,
+    revealedChien: [],
     bids: new Array<Bid | null>(playerCount).fill(null),
     currentPlayer: nextPlayer(dealer, playerCount),
     taker: null,
@@ -107,6 +108,7 @@ function cloneState(s: GameState): GameState {
     ...s,
     hands: s.hands.map((h) => [...h]),
     chien: [...s.chien],
+    revealedChien: [...s.revealedChien],
     bids: [...s.bids],
     ecart: [...s.ecart],
     ecartTrumpsShown: [...s.ecartTrumpsShown],
@@ -209,6 +211,7 @@ function afterCall(s: GameState): void {
   const contract = s.contract as Bid;
   if (contract === Bid.Petite || contract === Bid.Garde) {
     s.chienRevealed = true;
+    s.revealedChien = [...s.chien];
     (s.hands[s.taker as number] as Card[]).push(...s.chien);
     s.phase = 'discard';
     s.currentPlayer = s.taker as number;
@@ -482,6 +485,7 @@ export function playerView(state: GameState, p: number): PlayerView {
     phase: state.phase,
     hand: [...(state.hands[p] as Card[])],
     chien: state.chienRevealed && state.phase === 'discard' ? [...state.chien] : null,
+    revealedChien: [...state.revealedChien],
     bids: [...state.bids],
     currentPlayer: state.currentPlayer,
     taker: state.taker,
