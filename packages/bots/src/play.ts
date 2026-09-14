@@ -65,7 +65,7 @@ export function chooseCard(
     const layout = sampleLayout(view, knowledge, rng, samplingAttempts);
     const partner = partnerIn(view, layout);
     for (const card of legal) {
-      const outcome = rollout(view, layout, partner, card);
+      const outcome = rollout(view, layout, partner, card, config.play.rolloutPolicy ?? 'informed');
       totals.set(card, (totals.get(card) as number) + scoreRollout(view, partner, outcome));
     }
     samples++;

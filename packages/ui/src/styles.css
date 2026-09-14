@@ -3,6 +3,7 @@
 :root {
   --card-w: 58px;
   --gutter: 10px;
+  --app-max: 640px;
 
   --felt: #14532d;
   --felt-deep: #0d3a20;
@@ -40,6 +41,9 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  /* The fanned cards are rotated, so their corners can reach a few pixels past
+     the row's own box. Nothing here is ever meant to scroll sideways. */
+  overflow-x: hidden;
 }
 
 body {
@@ -53,7 +57,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 640px;
+  max-width: var(--app-max);
   margin: 0 auto;
   background: radial-gradient(ellipse at 50% 38%, var(--felt) 0%, var(--felt-deep) 72%);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -292,11 +296,37 @@ button.small {
      narrower box than the screen and the swing takes up the rest. A legal card
      is given WIDE_FACTOR times the width of a dimmed one, and the unit shrinks
      to keep the whole hand inside the same box. */
-  --room: calc(min(100vw, 640px) - 2 * var(--gutter) - var(--card-w) - 82px);
+  /* The fan swings the outer cards sideways by roughly half a card width, so
+     the reserve is measured in cards rather than pixels: a narrower phone gets
+     smaller cards and a proportionally smaller swing, and neither runs off the
+     edge. */
+  --room: calc(
+    min(100vw, var(--app-max)) - 2 * var(--gutter) - var(--card-w) - var(--card-w) * 1.75
+  );
   --unit: calc(var(--room) / max(var(--narrow, var(--n)) + 2.4 * var(--wide, 0) - 1, 1));
   --step: min(var(--card-w), var(--unit));
   --step-wide: min(var(--card-w), calc(var(--unit) * 2.4));
 }
+/* The fan's arithmetic is all in terms of --card-w, so the cards themselves have
+   to be exactly that wide. Sizing them here rather than from a prop keeps the
+   two in step at every breakpoint; when they drifted apart, the hand ran off
+   both edges of a small phone. */
+.hand-card svg {
+  width: var(--card-w);
+  height: calc(var(--card-w) * 92 / 60);
+  display: block;
+}
+.trick-card svg {
+  width: calc(var(--card-w) * 0.95);
+  height: calc(var(--card-w) * 0.95 * 92 / 60);
+  display: block;
+}
+.chien .cards svg {
+  width: calc(var(--card-w) * 0.8);
+  height: calc(var(--card-w) * 0.8 * 92 / 60);
+  display: block;
+}
+
 .hand-card {
   flex: none;
   background: none;
@@ -377,7 +407,7 @@ button.small {
 .sheet-inner {
   background: var(--panel-solid);
   width: 100%;
-  max-width: 640px;
+  max-width: var(--app-max);
   max-height: 92%;
   overflow-y: auto;
   border-radius: 16px 16px 0 0;
@@ -583,8 +613,30 @@ table.scores td:first-child {
   margin-top: 6px;
 }
 
+/* Small phones: smaller cards, so the fan still fits between the edges. */
+@media (max-width: 380px) {
+  :root {
+    --card-w: 50px;
+    --gutter: 8px;
+  }
+}
+
 @media (min-width: 420px) {
   :root {
     --card-w: 64px;
+  }
+}
+
+/* Tablets, which the spec asks for second. The table gets more room and the
+   cards get bigger rather than the whole thing sitting in a phone-shaped column
+   in the middle of a large screen. */
+@media (min-width: 700px) {
+  :root {
+    --card-w: 78px;
+    --gutter: 16px;
+    --app-max: 860px;
+  }
+  .trick {
+    inset: 4% 8%;
   }
 }

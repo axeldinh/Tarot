@@ -23,6 +23,7 @@ Build order is the one in `docs/spec.md`. Work stops and reports after steps 3,
 | 6 | PWA, offline service worker, deploy | ✅ |
 | 7 | Capacitor Android build | ⚠️ project set up and configured; the APK itself is built in CI, not here — see [Android](#android) |
 | 8 | Table play over the chosen transport | ⚠️ written and tested against a fake radio; **never run on two phones** — see [Table play](#table-play) |
+| 9 | Stronger bots, polish, rules reference | ✅ — though "stronger" turned out to mean *cheaper*: see [What actually makes a bot stronger](#what-actually-makes-a-bot-stronger) |
 
 ## Layout
 
@@ -74,8 +75,8 @@ Three levels, in `packages/bots`:
 | Level | Bidding | Play |
 |---|---|---|
 | **Débutant** | overbids by about a point and a half | heuristic only, no search |
-| **Normal** | calibrated thresholds | 30 Monte-Carlo determinisations, 150 ms budget |
-| **Confirmé** | calibrated thresholds | 200 determinisations, 400 ms budget |
+| **Normal** | calibrated thresholds | 16 Monte-Carlo determinisations |
+| **Confirmé** | calibrated thresholds | 24 determinisations, and searches its écart |
 
 A bot's whole API is `decide(view: PlayerView): Action`. A `PlayerView` has no
 field holding another player's hand, the unseen chien or the taker's écart, so a
@@ -107,27 +108,49 @@ Thresholds are set from measurement, not taste:
 ```sh
 pnpm --filter @tarot/bots calibrate                  # percentiles + bid distribution
 pnpm --filter @tarot/bots calibrate -- --fast        # same, with the search off
-pnpm --filter @tarot/bots calibrate -- --matchup     # levels head to head
+pnpm --filter @tarot/bots experiment -- --a informed-30 --b blind-30 --games 400
 ```
 
 As configured, roughly 3–7% of deals are passed out and the hands that are
 played split about 40/45/11/3 across Petite, Garde, Garde Sans and Garde Contre.
 
-Head-to-head at four players, seats alternating:
+### What actually makes a bot stronger
 
-| Matchup | Points per hand per seat | Hands |
+Every change was measured before it was kept. `scripts/experiment.ts` plays each
+deal **twice**, with the two variants swapping seats between the runs, and
+measures the difference — the luck of the cards at a given seat lands on both
+and cancels, which buys about an order of magnitude in precision over a naive
+head-to-head.
+
+| Change | Points per hand per seat | Paired deals |
 |---|---|---|
-| Normal vs Débutant | **+37.7 ± 4.0** | 584 |
-| Confirmé vs Normal | +3.7 ± 6.3 | 208 |
+| A one-ply search, versus none at all | **+37.7 ± 4.0** | 584 |
+| 8 → 30 determinisations | +1.6 ± 2.5 | 351 |
+| 30 → 200 determinisations | +3.7 ± 6.3 | 208 |
+| Blind → informed rollout policy | +2.6 ± 2.5 | 375 |
+| Heuristic → searched écart | +1.2 ± 1.1 | 564 |
 
-Having a search at all is worth a great deal, and is far outside the noise.
-Going from Normal's 30 determinisations to Confirmé's 200 is **not** measurably
-better at that sample size — the difference is well inside one standard error,
-for six times the thinking time. The likely reason is that every rollout is
-driven by the same crude greedy policy, so more samples estimate the same biased
-number more precisely rather than playing better. Sharpening the rollout policy
-is step 10's job; until that is done, do not read Confirmé as the stronger bot
-just because it thinks for longer.
+The first row is worth about nine standard errors. **Every other row is noise.**
+Having a search at all transforms the bot; nothing about the search then matters
+— not its size, not how well it plays the samples out, not extending it to the
+écart.
+
+Two things follow, and both are in the code:
+
+- **The budget came down, not up.** Confirmé used 200 determinisations; it now
+  uses 24, which is the same strength for about a fifth of the work — 8 ms a
+  move instead of 45. A phone's battery is a real cost and the evidence says it
+  was buying nothing.
+- **Normal and Confirmé are not measurably different at cards.** Confirmé
+  searches its écart and Normal does not, and that difference is not significant
+  either. The level exists because the spec asks for three, and it is the one
+  that looks hardest — not because it has been shown to win more often. Saying
+  otherwise would be selling noise.
+
+What is still unexplained is *why* the search saturates at a handful of samples.
+The next thing worth trying is not more of the same: it is a search that looks
+past the current trick, or an evaluation that is something other than the score
+of one crude playout.
 
 ### Simulation
 

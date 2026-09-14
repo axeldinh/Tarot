@@ -12,6 +12,7 @@ import { choosePoignee, shouldAnnounceChelem } from './announce.ts';
 import { chooseBid } from './bidding.ts';
 import { configFor, type BotConfig } from './config.ts';
 import { chooseCall, chooseEcart } from './ecart.ts';
+import { searchEcart } from './ecartSearch.ts';
 import { chooseCard, type Clock } from './play.ts';
 import type { Bot, Level } from './types.ts';
 
@@ -62,7 +63,9 @@ export function makeBot(level: Level, options: BotOptions = {}): Bot {
         return {
           type: 'Discard',
           player: self,
-          cards: chooseEcart(view.hand, LAYOUT[view.playerCount].chienSize, config.ecart),
+          cards: config.searchEcart
+            ? searchEcart(view, config.ecart, config.searchEcart, rng).cards
+            : chooseEcart(view.hand, LAYOUT[view.playerCount].chienSize, config.ecart),
         };
 
       case 'chelem':

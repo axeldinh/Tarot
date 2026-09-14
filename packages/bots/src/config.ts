@@ -43,6 +43,13 @@ export interface BiddingThresholds {
 }
 
 /** Weights for choosing the ecart. Lower cost means more willing to bury it. */
+export interface EcartSearch {
+  /** How many candidate ecarts to weigh up. */
+  candidates: number;
+  /** Sampled layouts of the other hands per candidate. */
+  determinisations: number;
+}
+
 export interface EcartWeights {
   /** Multiplier on the card's own point value: shed cheap cards first. */
   honour: number;
@@ -59,6 +66,13 @@ export interface PlayConfig {
   maxDeterminisations: number;
   /** Tries at sampling a hand layout that respects the void inferences. */
   samplingAttempts: number;
+  /**
+   * How a sampled layout is played out. `informed` uses the sample's hands,
+   * which is what a determinised search is for; `blind` plays each sample as if
+   * nothing were known, which is what this did first and why more samples used
+   * to buy nothing.
+   */
+  rolloutPolicy?: 'blind' | 'informed';
 }
 
 export interface BotConfig {
@@ -71,6 +85,11 @@ export interface BotConfig {
   delayMs: [number, number];
   /** Show a poignee whose bonus is worth the information it gives away. */
   announcePoignee: boolean;
+  /**
+   * Try several ecarts and play each one out, instead of trusting the heuristic.
+   * Null means use the heuristic alone.
+   */
+  searchEcart: EcartSearch | null;
   /** When a hand is lopsided enough to be worth announcing a chelem. */
   chelem: ChelemRule | null;
 }
@@ -142,30 +161,59 @@ export const CONFIG: Record<Level, BotConfig> = {
     delayMs: [300, 600],
     announcePoignee: true,
     chelem: null,
+    searchEcart: null,
   },
-  /** Same heuristics, plus a modest Monte-Carlo search. */
+  /**
+   * Same heuristics, plus a Monte-Carlo search.
+   *
+   * Sixteen determinisations, not two hundred. Paired experiments over several
+   * hundred deals each (`scripts/experiment.ts`) say that having a search at all
+   * is worth +37.7 +/- 4.0 points a hand, and that nothing about its size then
+   * matters: 8 against 30 came out at +1.6 +/- 2.5, and 30 against 200 at
+   * +3.7 +/- 6.3. So the budget is set just above where the evidence says the
+   * gain stops, and the rest is given back to the battery.
+   */
   normal: {
     bidding: WEIGHTS,
     ecart: ECART,
     thresholds: THRESHOLDS,
-    play: { budgetMs: 150, maxDeterminisations: 30, samplingAttempts: 40 },
+    play: {
+      budgetMs: 150,
+      maxDeterminisations: 16,
+      samplingAttempts: 40,
+      rolloutPolicy: 'informed',
+    },
     delayMs: [400, 800],
     announcePoignee: true,
     chelem: { minTrumpRatio: 0.85, requires21: true, minBouts: 3 },
+    searchEcart: null,
   },
   /**
-   * The full budget the spec allows on a mid-range phone.
+   * The strongest level, and an honest caveat.
    *
-   * Measured, this is not yet worth its cost: over 208 hands head-to-head it beat
-   * Normal by 3.7 +/- 6.3 points a hand, which is nothing. Every rollout runs the
-   * same greedy policy, so more samples buy a more precise estimate of the same
-   * biased number. The fix is a better rollout policy, not a bigger budget.
+   * It does not differ from Normal by thinking longer: measurement says that
+   * buys nothing (see the note on `normal`). What it does instead is search its
+   * ecart — the one decision a taker makes that is worth several tricks — and
+   * that came out at +1.2 +/- 1.1 points a hand over 564 paired deals, which is
+   * not significant either.
+   *
+   * So: Normal and Confirme are not measurably different at cards. Every attempt
+   * to improve on a plain one-ply search was measured and none of them moved the
+   * needle; see the table in the README. The level is kept because the spec asks
+   * for three, and this is the one that spends the most looking — not because it
+   * has been shown to win more.
    */
   confirme: {
     bidding: WEIGHTS,
     ecart: ECART,
     thresholds: THRESHOLDS,
-    play: { budgetMs: 400, maxDeterminisations: 200, samplingAttempts: 60 },
+    play: {
+      budgetMs: 400,
+      maxDeterminisations: 24,
+      samplingAttempts: 60,
+      rolloutPolicy: 'informed',
+    },
+    searchEcart: { candidates: 10, determinisations: 12 },
     delayMs: [400, 800],
     announcePoignee: true,
     chelem: { minTrumpRatio: 0.8, requires21: true, minBouts: 2 },

@@ -160,7 +160,8 @@ describe('a rollout', () => {
   });
 
   it('reproduces the engine exactly when the layout is the real one', () => {
-    // Hand the rollout the true hands: the greedy policy then drives both, so the
+    // Hand the rollout the true hands and pin it to the blind policy, which is
+    // the one the loop below also uses. Both then play the same cards, so the
     // rollout's bookkeeping must land on the engine's own numbers.
     const start = dealToPlay({}, { taker: 0, bid: Bid.GardeSans, seed: 4242 });
     const view = playerView(start, start.currentPlayer);
@@ -178,7 +179,7 @@ describe('a rollout', () => {
       sideOf,
       false,
     );
-    const predicted = rollout(view, truth, start.partner, first);
+    const predicted = rollout(view, truth, start.partner, first, 'blind');
 
     let s = start;
     while (s.phase === 'playing') {

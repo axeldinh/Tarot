@@ -6,8 +6,15 @@
   "description": "Tarot AI. Depends only on the engine, and only ever sees a PlayerView.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
@@ -15,7 +22,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "simulate": "node --experimental-strip-types scripts/simulate.ts",
-    "calibrate": "node --experimental-strip-types scripts/calibrate.ts"
+    "calibrate": "node --experimental-strip-types scripts/calibrate.ts",
+    "experiment": "node --experimental-strip-types scripts/experiment.ts"
   },
   "dependencies": {
     "@tarot/engine": "workspace:*"

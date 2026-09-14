@@ -3,6 +3,7 @@ export * from './config.ts';
 export * from './evaluate.ts';
 export * from './bidding.ts';
 export * from './ecart.ts';
+export * from './ecartSearch.ts';
 export * from './announce.ts';
 export * from './knowledge.ts';
 export * from './rollout.ts';
