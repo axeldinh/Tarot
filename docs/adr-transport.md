@@ -138,7 +138,9 @@ underneath. Nothing above `packages/net` knows which one is in use.
   both — worth revisiting if iOS ever matters).
 - The permission flow needs real design work, not a bare `requestPermissions()`:
   an explanation screen before the system prompts, and a graceful fall back to
-  "play solo against bots" when they are refused.
+  "play solo against bots" when they are refused. The manifest currently asks
+  for nothing but the Capacitor template's `INTERNET`; the Bluetooth and Wi-Fi
+  permissions arrive with the transport and with that screen, not before.
 - Reconnect and bot-takeover (build spec §5) live above the transport, driven by
   `peer-left` plus a timer, so they are implementation-independent and testable
   against `LocalTransport`.
@@ -159,6 +161,9 @@ live. Concretely, before step 9 (table play) starts, someone with two Android
 phones must:
 
 1. Build the spike app from `spikes/nearby/` (to be written with the plugin).
+   The Capacitor Android project it would extend now exists at
+   `packages/ui/android`, configured for Android 9+ and portrait, so the spike
+   is a plugin and a screen rather than a project from scratch.
 2. Put both phones in aeroplane mode, then re-enable Wi-Fi and Bluetooth only.
 3. Confirm advertise → discover → connect → `sendPayload` round-trips a string,
    and record the time from "tap Host" to "connected".
@@ -166,5 +171,8 @@ phones must:
 
 If that fails, the fallback is option B and this ADR gets superseded, not
 amended. Nothing in steps 2–8 depends on the answer: the engine, the bots, the
-UI and the PWA all sit on `LocalTransport`, which is why the build order puts
-them first and why work continued past this gate rather than stopping at it.
+UI, the PWA and the Android wrapper all sit on `LocalTransport`, which is why
+the build order puts them first and why work continued past this gate rather
+than stopping at it. Those steps are now done, so this gate is the next thing
+standing between the project and table play — and it is the one part of the
+build that cannot be done from a container at all.

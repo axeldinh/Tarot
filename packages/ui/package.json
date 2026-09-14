@@ -10,9 +10,16 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check:pwa": "node scripts/check-pwa.mjs",
+    "android:sync": "pnpm run build:native && cap sync android",
+    "android:open": "cap open android",
+    "android:apk": "pnpm run android:sync && cd android && ./gradlew assembleDebug",
+    "check:android": "node scripts/check-android.mjs",
+    "build:native": "tsc -p tsconfig.json --noEmit && vite build --mode capacitor"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
     "@tarot/bots": "workspace:*",
     "@tarot/engine": "workspace:*",
     "@tarot/net": "workspace:*",
@@ -20,12 +27,16 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
     "jsdom": "^27.0.0",
-    "vite": "^7.1.9"
+    "playwright": "^1.56.0",
+    "vite": "^7.1.9",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

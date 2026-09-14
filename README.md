@@ -20,8 +20,8 @@ Build order is the one in `docs/spec.md`. Work stops and reports after steps 3,
 | 3 | 3 and 5 players, called king | ✅ (pulled forward — the scoring tests need all three table sizes) |
 | 4 | Bots + headless simulation | ✅ |
 | 5 | React UI, solo vs bots | ✅ |
-| 6 | PWA, offline service worker, deploy | — |
-| 7 | Capacitor Android build | — |
+| 6 | PWA, offline service worker, deploy | ✅ |
+| 7 | Capacitor Android build | ⚠️ project set up and configured; the APK itself is built in CI, not here — see [Android](#android) |
 | 8 | Table play over the chosen transport | — (the host, protocol and `LocalTransport` are in place) |
 
 ## Layout
@@ -196,17 +196,68 @@ dropped — which is the whole mechanism behind the reconnect handling the spec
 asks for; only the timeout policy is still to come. Swapping `LocalTransport`
 for the transport chosen in the ADR is what step 9 amounts to.
 
-### Building the app
+### The web build
 
-- **Web:** `pnpm --filter @tarot/ui build`, then deploy `packages/ui/dist` to
-  GitHub Pages, Netlify or Cloudflare Pages. Static hosting, no backend. The
-  build uses relative asset paths so it works from a subdirectory; set
-  `VITE_BASE=/` for a domain root. It is **not yet an installable PWA** — there
-  is no service worker, so it does not run offline after a reload. That is
-  step 7.
-- **Android APK:** not yet — Capacitor is step 8. When it lands:
-  `pnpm --filter @tarot/ui build && npx cap sync android && npx cap open android`,
-  then Build → Generate Signed Bundle/APK. Target is Android 9+.
+```sh
+pnpm --filter @tarot/ui build       # -> packages/ui/dist
+pnpm --filter @tarot/ui check:pwa   # drives the built app with the network cut
+```
+
+It is an installable PWA: web app manifest, maskable icons, portrait, and a
+service worker that precaches the whole app. There are no runtime fetches to
+fall back on and nothing is ever requested from a third party, so once it has
+been opened it never touches the network again.
+
+`check:pwa` is the part worth knowing about. It serves the build, lets the
+worker install, then **cuts the connection, reloads, and plays a whole hand
+through to a score**. "Offline-capable" is easy to break by accident and
+invisible to a unit test, so CI runs that check on every push.
+
+Deployment is `.github/workflows/deploy.yml`: pushes to `main` publish to GitHub
+Pages. Set Settings → Pages → Source to "GitHub Actions" before the first run.
+Netlify or Cloudflare Pages work the same way — build `pnpm install && pnpm
+--filter @tarot/ui build`, publish `packages/ui/dist`. Asset paths are relative,
+so the same build serves from a domain root or a subdirectory; set `VITE_BASE=/`
+if you want them absolute.
+
+### Android
+
+```sh
+pnpm --filter @tarot/ui android:sync    # build + cap sync
+pnpm --filter @tarot/ui check:android   # assert the native config is intact
+pnpm --filter @tarot/ui android:apk     # ./gradlew assembleDebug
+pnpm --filter @tarot/ui android:open    # Android Studio
+```
+
+Capacitor wraps the same web build, loaded out of the APK, so the game works in
+aeroplane mode from the moment it is installed. Configured by hand on top of the
+Capacitor template: `minSdkVersion` 28 (the spec's Android 9), the activity
+locked to portrait, launcher and adaptive icons and the splash screens generated
+from the app's own icon, and no permission beyond the template's `INTERNET`.
+
+The native bundle is built with `--mode capacitor`, whose only difference is
+that it ships **without** the service worker — Capacitor already serves every
+asset from inside the package, so a worker there would only add a second thing
+that can serve a stale build. The two builds write to different directories
+(`dist` and `dist-native`) so that a native build followed by a deploy cannot
+put a worker-less bundle on the web.
+
+**The APK has not been built on this machine.** The container this was developed
+in cannot reach `dl.google.com`, which is where both the Android SDK and the
+Android Gradle Plugin come from; `./gradlew assembleDebug` fails at dependency
+resolution with a 403 before it gets as far as compiling anything. So the CI
+workflow builds it instead, on a runner that can, and uploads the APK as an
+artefact — see the `android` job in `.github/workflows/ci.yml`. Until that job
+has run green, treat the Android build as configured but unproven.
+
+Two things follow from not having had a device:
+
+- `INTERNET` is kept because the Capacitor template sets it and removing it has
+  not been tried on real hardware. The game makes no network calls, so it is a
+  candidate for removal once somebody can check that the local asset server
+  still works without it.
+- Signing is not set up. `android:apk` produces a debug APK; a release build
+  needs a keystore, which is the user's to create.
 
 ## Tests
 
@@ -219,6 +270,15 @@ for the transport chosen in the ADR is what step 9 amounts to.
 
 The engine's threshold is the spec's 90%; the others are set a little lower on
 branches, where a defensive `catch` is not worth contorting a test for.
+
+Beyond the unit tests, CI runs four things that a unit test cannot tell you:
+
+| | |
+|---|---|
+| `engine simulate` | 10 000 hands per table size of random legal play |
+| `bots simulate` | 10 000 hands per table size, bot versus bot |
+| `ui check:pwa` | the built app, in a browser, with the network cut |
+| `ui check:android` + `assembleDebug` | the native config, and an actual APK |
 
 ## Rules notes
 

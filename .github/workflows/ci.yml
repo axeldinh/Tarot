@@ -39,3 +39,47 @@ jobs:
           name: web
           path: packages/ui/dist
           if-no-files-found: error
+
+  # The offline promise is easy to break by accident and invisible to a unit
+  # test, so the built app is driven in a real browser with the network cut.
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tarot/ui exec playwright install --with-deps chromium
+      - run: pnpm --filter @tarot/ui build
+      - run: pnpm --filter @tarot/ui check:pwa
+
+  # The APK could not be built in the container this was developed in, because
+  # Google's Maven is unreachable from it. Here it can be, so here it is built.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tarot/ui android:sync
+      - run: pnpm --filter @tarot/ui check:android
+      - name: Build the debug APK
+        working-directory: packages/ui/android
+        run: ./gradlew --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarot-debug-apk
+          path: packages/ui/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

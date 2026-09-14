@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tarot</string>
+    <string name="title_activity_main">Tarot</string>
+    <string name="package_name">net.tarot.jeu</string>
+    <string name="custom_url_scheme">net.tarot.jeu</string>
+</resources>
