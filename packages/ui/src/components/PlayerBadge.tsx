@@ -32,7 +32,10 @@ export function PlayerBadge({ seat, view, tricks }: PlayerBadgeProps): JSX.Eleme
         {view.dealer === seat.seat ? ' ●' : ''}
       </span>
       <span className="meta">
-        {bid === null || bid === undefined ? '—' : bidLabel(bid, t)}
+        {/* The bid only means anything while bidding is still open — once the
+            contract is set it is history, not news, and leaving it up reads
+            as a lower bid that somehow beat the one that actually won. */}
+        {view.phase === 'bidding' ? (bid === null || bid === undefined ? '—' : bidLabel(bid, t)) : ''}
         {view.tricks.length > 0 ? ` · ${t.table.tricks(tricks)}` : ''}
       </span>
       {(isTaker || isPartner) && (

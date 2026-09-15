@@ -439,6 +439,16 @@ button.small {
   outline-offset: 1px;
   border-radius: 5px;
 }
+/* Marks a card the taker just picked up from the chien, so it is not just
+   another card lost in the sorted fan while the ecart is being built. */
+.hand-card.from-chien svg {
+  outline: 2px dashed var(--back-edge);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+.hand-card.from-chien.chosen svg {
+  outline-color: var(--accent);
+}
 
 /* --- toast -------------------------------------------------------------- */
 .actions-wrap {
