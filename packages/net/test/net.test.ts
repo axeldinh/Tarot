@@ -456,10 +456,30 @@ describe('a solo game', () => {
     });
     expect(delays.length).toBeGreaterThan(0);
     for (const ms of delays) {
-      expect(ms).toBeGreaterThanOrEqual(300);
-      expect(ms).toBeLessThanOrEqual(800);
+      expect(ms).toBeGreaterThanOrEqual(550);
+      expect(ms).toBeLessThanOrEqual(950);
     }
     game.close();
+  });
+
+  it('holds the chien on the table long enough for a bot taker to bury it', () => {
+    const delays: number[] = [];
+    const host = new GameHost({
+      playerCount: 4,
+      seats: botSeats(4),
+      seed: 2,
+      botDelayMs: 40,
+      chienRevealMs: 1800,
+      schedule: (fn, ms) => {
+        delays.push(ms);
+        fn();
+      },
+    });
+    expect(host.handOver).toBe(true);
+    // Exactly one seat discards the chien, and its bot move is held to the
+    // reveal floor rather than firing after its own 40ms "thinking" delay.
+    expect(delays.filter((ms) => ms === 1800)).toHaveLength(1);
+    expect(new Set(delays)).toContain(1800);
   });
 
   it('holds the table between tricks so the last one can be gathered up', () => {

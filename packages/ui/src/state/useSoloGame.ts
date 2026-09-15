@@ -3,7 +3,7 @@ import { createSoloGame, type ClientState, type SoloGame } from '@tarot/net';
 import type { Action } from '@tarot/engine';
 import type { GameApi } from './gameApi.ts';
 import { clearGame, saveGame, type GameConfig, type SavedGame } from './storage.ts';
-import { TRICK_PAUSE_MS } from './timing.ts';
+import { CHIEN_REVEAL_MS, TRICK_PAUSE_MS } from './timing.ts';
 
 export interface SoloGameApi extends GameApi {
   /** Always present in solo play, which is the only place it exists. */
@@ -44,6 +44,7 @@ export function useSoloGame(config: GameConfig | null, resume: SavedGame | null)
       names: [config.name],
       seed: config.seed,
       trickPauseMs: TRICK_PAUSE_MS,
+      chienRevealMs: CHIEN_REVEAL_MS,
       ...(saved ? { initialSession: saved.session } : {}),
     });
     setGame(created);
