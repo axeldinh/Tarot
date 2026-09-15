@@ -170,6 +170,7 @@ export async function hostOnlineTable(options: HostOnlineTableOptions): Promise<
     start: 'manual',
     botDelayMs: 'natural',
     trickPauseMs: TRICK_PAUSE_MS,
+    chienRevealMs: CHIEN_REVEAL_MS,
     standInLevel: options.level,
     hostPeer: LOCAL_PLAYER,
   });
