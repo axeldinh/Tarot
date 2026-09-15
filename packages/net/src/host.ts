@@ -31,6 +31,12 @@ export interface HostOptions {
   allowUndo?: boolean;
   /** Wait this long before a bot moves. Set 0 in tests. */
   botDelayMs?: number | 'natural';
+  /**
+   * Extra pause before the first card of a new trick, on top of the usual bot
+   * delay. The trick just won is still lying on the table; this is the time it
+   * gets to be gathered up before the next card lands on an empty felt.
+   */
+  trickPauseMs?: number;
   /** Injected so tests do not have to wait. */
   schedule?: (fn: () => void, ms: number) => void;
   sessionId?: string;
@@ -427,10 +433,20 @@ export class GameHost {
     if (!this.hostPlays(seat)) return;
 
     const bot = this.botFor(seat);
-    const delay =
+    const thinking =
       this.options.botDelayMs === 'natural'
         ? bot.thinkingDelay()
         : (this.options.botDelayMs ?? 0);
+    // Nobody leads the next trick while the last one is still on the table.
+    const between =
+      this.state.phase === 'playing' &&
+      this.state.tricks.length > 0 &&
+      (this.state.currentTrick === null || this.state.currentTrick.plays.length === 0);
+    // The pause absorbs the thinking time rather than being added to it: a bot
+    // that wants 800ms to think has already used most of the pause up, and
+    // stacking the two makes every trick feel like the table is asleep.
+    const pause = between ? (this.options.trickPauseMs ?? 0) : 0;
+    const delay = Math.max(thinking, pause);
 
     this.botPending = true;
     this.schedule(() => {

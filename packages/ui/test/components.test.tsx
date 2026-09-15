@@ -91,6 +91,25 @@ describe('the hand', () => {
     return { onPlay, onBlocked, ...utils };
   }
 
+  it('sorts what it is given, whatever order it arrives in', () => {
+    // Dealt order is no order at all, so the component does not trust it.
+    const dealt = parseHand('T5 H4 EX S3 D9 C2 S2');
+    const { container } = render(
+      <Hand
+        cards={dealt}
+        playable={new Set()}
+        cardWidth={40}
+        choosing={false}
+        onPlay={() => {}}
+      />,
+    );
+    const order = [...container.querySelectorAll('.hand-card')].map((b) =>
+      cardId(Number(b.getAttribute('data-card'))),
+    );
+    // Suits in alternating colours, then the atouts, then the Excuse.
+    expect(order).toEqual(['S2', 'S3', 'H4', 'C2', 'D9', 'T5', 'EX']);
+  });
+
   it('plays a legal card and refuses an illegal one, saying so', () => {
     const { onPlay, onBlocked, container } = setup([parseCard('S2'), parseCard('S3')]);
     const buttons = [...container.querySelectorAll('.hand-card')] as HTMLElement[];

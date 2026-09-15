@@ -15,6 +15,7 @@ import {
 import type { PlayerCount } from '@tarot/engine';
 import type { Level } from '@tarot/bots';
 import type { GameApi } from './gameApi.ts';
+import { TRICK_PAUSE_MS } from './timing.ts';
 
 export type TableRole = 'host' | 'guest';
 
@@ -85,6 +86,7 @@ export async function hostTable(options: HostTableOptions): Promise<Live> {
     tableName: options.tableName,
     start: 'manual',
     botDelayMs: 'natural',
+    trickPauseMs: TRICK_PAUSE_MS,
     standInLevel: options.level,
     hostPeer: LOCAL_PLAYER,
   });

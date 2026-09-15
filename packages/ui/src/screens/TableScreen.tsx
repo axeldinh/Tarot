@@ -106,6 +106,11 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
     [view, can.myTurn, t],
   );
 
+  // Only while a card is actually being asked for. During the bidding the
+  // action bar is already carrying it, and two things saying the same thing is
+  // one too many.
+  const yourTurn = can.myTurn && view.phase === 'playing';
+
   const contractChip = view.contract !== null
     ? `${bidLabel(view.contract as Bid, t)} ${DOT} ${seatName(view.taker as number)}`
     : t.phase[view.phase];
@@ -126,7 +131,12 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       </div>
 
       <div className="table">
-        <TrickArea view={view} cardWidth={54} waitingFor={seatName(view.currentPlayer)} />
+        <TrickArea
+          view={view}
+          cardWidth={54}
+          waitingFor={seatName(view.currentPlayer)}
+          seatName={seatName}
+        />
         {others.map((seat, i) => {
           const info = session.seats[seat];
           if (!info) return null;
@@ -188,14 +198,7 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
         choosing={can.myTurn && (view.phase === 'playing' || view.phase === 'discard')}
         onPlay={onCardTap}
         onBlocked={onBlocked}
-      />
-
-      <Toast
-        message={note ?? game.rejection?.message ?? null}
-        onDone={() => {
-          setNote(null);
-          game.dismissRejection();
-        }}
+        highlight={yourTurn}
       />
 
 

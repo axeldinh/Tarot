@@ -119,4 +119,19 @@ describe('card identity', () => {
     expect(formatHand(sorted)).toBe('S2 CR T1 EX');
     expect(compareForDisplay(1, 5)).toBeLessThan(0);
   });
+
+  it('alternates the suit colours so a fan reads in blocks', () => {
+    const one = SUITS.map((s) => suitCard(s, 1));
+    expect(formatHand(sortHand(one))).toBe('S1 H1 C1 D1');
+  });
+
+  it('puts the atouts in rank order after the suits, and the Excuse last', () => {
+    const hand = [EXCUSE, trumpCard(21), trumpCard(2), suitCard(2, ROI), trumpCard(1)];
+    expect(formatHand(sortHand(hand))).toBe('DR T1 T2 T21 EX');
+  });
+
+  it('orders every card in the deck without a tie', () => {
+    const keys = new Set(DECK.map((c) => DECK.filter((o) => compareForDisplay(o, c) < 0).length));
+    expect(keys.size).toBe(DECK_SIZE);
+  });
 });

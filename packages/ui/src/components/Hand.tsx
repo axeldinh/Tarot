@@ -1,8 +1,9 @@
-import { useState, type CSSProperties, type JSX } from 'react';
-import type { Card } from '@tarot/engine';
+import { useMemo, useState, type CSSProperties, type JSX } from 'react';
+import { sortHand, type Card } from '@tarot/engine';
 import { CardFace } from '../cards/CardFace.tsx';
 
 export interface HandProps {
+  /** The hand, in any order: it is sorted here before being fanned. */
   cards: readonly Card[];
   /** Cards that can be tapped. Everything else is dimmed and inert. */
   playable: ReadonlySet<Card>;
@@ -17,11 +18,18 @@ export interface HandProps {
   onPlay(card: Card): void;
   /** Called when a dimmed card is tapped, so the screen can say why. */
   onBlocked?(card: Card): void;
+  /** Light the hand up: it is this player's turn to put a card down. */
+  highlight?: boolean;
 }
 
 /**
  * The hand, fanned along the bottom. Legal cards lift and can be tapped; the
  * rest are dimmed and refuse the tap, but still answer when asked why.
+ *
+ * Cards are sorted here rather than by the caller. A hand arrives in the order
+ * it was dealt, which is no order at all, and sorting at the point of display
+ * means no screen can forget to do it. The order does not change as cards are
+ * played, so a card stays where its neighbours put it for the whole hand.
  */
 export function Hand({
   cards,
@@ -31,33 +39,35 @@ export function Hand({
   choosing,
   onPlay,
   onBlocked,
+  highlight,
 }: HandProps): JSX.Element {
   const [lifted, setLifted] = useState<Card | null>(null);
-  const middle = (cards.length - 1) / 2;
+  const ordered = useMemo(() => sortHand(cards), [cards]);
+  const middle = (ordered.length - 1) / 2;
   // While a card is being asked for, the legal ones are given more of the width
   // than the rest. A fanned hand of eighteen leaves each card a sliver barely
   // wider than a pencil; spreading the playable ones makes them a real target
   // and shows at a glance what the choice actually is.
-  const spread = choosing ? cards.filter((c) => playable.has(c)).length : 0;
+  const spread = choosing ? ordered.filter((c) => playable.has(c)).length : 0;
   // A gentle arc, flattened as the hand gets longer: at 24 cards a steep fan
   // runs off both edges of a phone.
   // Cap the whole fan angle rather than the per-card step: what runs off the
   // edge of a phone is the total swing, not the angle between neighbours.
-  const step = cards.length > 1 ? 18 / (cards.length - 1) : 0;
+  const step = ordered.length > 1 ? 18 / (ordered.length - 1) : 0;
 
   return (
-    <div className="hand">
+    <div className={`hand${highlight ? ' your-turn' : ''}`}>
       <div
         className="hand-inner"
         style={
           {
-            '--n': cards.length,
+            '--n': ordered.length,
             '--wide': spread,
-            '--narrow': cards.length - spread,
+            '--narrow': ordered.length - spread,
           } as CSSProperties
         }
       >
-        {cards.map((card, index) => {
+        {ordered.map((card, index) => {
           const can = playable.has(card);
           const isChosen = chosen?.has(card) ?? false;
           const offset = index - middle;

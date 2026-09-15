@@ -100,7 +100,9 @@ try {
   };
 
   let scored = false;
-  for (let i = 0; i < 400 && !scored; i++) {
+  // Generous: the table now holds each trick for most of a second so it can
+  // be gathered up, which adds the better part of twenty seconds to a hand.
+  for (let i = 0; i < 800 && !scored; i++) {
     await page.waitForTimeout(150);
     if (await page.locator('[data-testid=score-breakdown]').count()) {
       scored = true;

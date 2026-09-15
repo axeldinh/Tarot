@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createSoloGame, type ClientState, type SoloGame } from '@tarot/net';
 import type { Action } from '@tarot/engine';
 import type { GameApi } from './gameApi.ts';
 import { clearGame, saveGame, type GameConfig, type SavedGame } from './storage.ts';
+import { TRICK_PAUSE_MS } from './timing.ts';
 
 export interface SoloGameApi extends GameApi {
   /** Always present in solo play, which is the only place it exists. */
@@ -18,29 +19,39 @@ const EMPTY: ClientState = { seat: null, token: null, view: null, session: null,
  * is not entitled to see — the same discipline a networked table will be under.
  */
 export function useSoloGame(config: GameConfig | null, resume: SavedGame | null): SoloGameApi {
-  const gameRef = useRef<SoloGame | null>(null);
+  const [game, setGame] = useState<SoloGame | null>(null);
   const [, force] = useState(0);
+  // `resume` is only read when a game is created; a later change must not
+  // restart one that is already being played.
+  const resumeRef = useRef(resume);
+  resumeRef.current = resume;
 
-  const game = useMemo(() => {
-    gameRef.current?.close();
+  // The game is built in the effect that also tears it down, rather than in a
+  // `useMemo` with the teardown somewhere else. Those two were not a pair: in
+  // development React mounts, unmounts and remounts every component to shake
+  // out exactly this, the memo held its value across the remount, and the
+  // second mount got back a game whose transport had just been closed. The
+  // table went on playing and the screen sat on the first bid forever.
+  useEffect(() => {
     if (!config) {
-      gameRef.current = null;
-      return null;
+      setGame(null);
+      return;
     }
+    const saved = resumeRef.current;
     const created = createSoloGame({
       playerCount: config.playerCount,
       level: config.level,
       names: [config.name],
       seed: config.seed,
-      ...(resume ? { initialSession: resume.session } : {}),
+      trickPauseMs: TRICK_PAUSE_MS,
+      ...(saved ? { initialSession: saved.session } : {}),
     });
-    gameRef.current = created;
-    return created;
-    // `resume` is only read at creation; a later change must not restart a game.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setGame(created);
+    return () => {
+      created.close();
+      setGame((current) => (current === created ? null : current));
+    };
   }, [config]);
-
-  useEffect(() => () => gameRef.current?.close(), []);
 
   const subscribe = useCallback(
     (listener: () => void) => (game ? game.client.subscribe(listener) : () => {}),

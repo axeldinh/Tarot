@@ -175,9 +175,33 @@ export function formatHand(cards: readonly Card[]): string {
   return cards.map(cardId).join(' ');
 }
 
-/** Display order: suits ascending, then trumps ascending, Excuse last. */
+/**
+ * The order the suits are laid out in a fanned hand: black, red, black, red.
+ *
+ * Deliberately not the deck's own order, which puts Coeur next to Carreau. Two
+ * red suits side by side in a fan read as one long block, and picking a Coeur
+ * out of it means looking at every card rather than at the boundary.
+ */
+const DISPLAY_SUIT_ORDER: Record<Suit, number> = {
+  [SPADES]: 0,
+  [HEARTS]: 1,
+  [CLUBS]: 2,
+  [DIAMONDS]: 3,
+};
+
+/**
+ * Sort key for a hand as it is shown to a player: suits in alternating colours
+ * and ascending rank, then the atouts in ascending order, then the Excuse.
+ */
+function displayKey(c: Card): number {
+  if (c === EXCUSE) return 1000;
+  if (isTrump(c)) return 900 + rankOf(c);
+  return DISPLAY_SUIT_ORDER[suitOf(c) as Suit] * 100 + rankOf(c);
+}
+
+/** Display order: suits in alternating colours, then atouts, then the Excuse. */
 export function compareForDisplay(a: Card, b: Card): number {
-  return a - b;
+  return displayKey(a) - displayKey(b);
 }
 
 export function sortHand(cards: readonly Card[]): Card[] {

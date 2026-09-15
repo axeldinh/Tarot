@@ -16,6 +16,8 @@ export interface SoloOptions {
   dealer?: number;
   rules?: Partial<Rules>;
   botDelayMs?: number | 'natural';
+  /** Time the last trick is left on the table before the next one starts. */
+  trickPauseMs?: number;
   schedule?: (fn: () => void, ms: number) => void;
   /** Resume a session that was interrupted: the scoreboard carries over. */
   initialSession?: SessionSnapshot;
@@ -57,6 +59,7 @@ export function createSoloGame(options: SoloOptions): SoloGame {
     allowUndo: true,
     ...(options.initialSession ? { initialSession: options.initialSession } : {}),
     botDelayMs: options.botDelayMs ?? 'natural',
+    ...(options.trickPauseMs === undefined ? {} : { trickPauseMs: options.trickPauseMs }),
     ...(options.schedule ? { schedule: options.schedule } : {}),
     start: 'manual',
   });

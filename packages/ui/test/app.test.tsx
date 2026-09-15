@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { newSession } from '@tarot/net';
@@ -19,6 +20,32 @@ async function clickIfPresent(label: RegExp): Promise<boolean> {
 function legalCards(): HTMLElement[] {
   return [...document.querySelectorAll('.hand-card.playable')] as HTMLElement[];
 }
+
+describe('a game that is mounted twice', () => {
+  // React mounts, unmounts and remounts every component in development to
+  // shake out effects that are not a matched pair. This one was not: the game
+  // was built in a `useMemo` and closed by an effect, so the remount got back a
+  // game whose transport had just been closed. The table played on, the screen
+  // never heard about it, and the app sat on the first bid forever. It only
+  // showed up in the browser, because StrictMode does nothing in a production
+  // build — which is why every test and the offline check still passed.
+  it('is still live after the remount, and the bots still reach it', async () => {
+    installStorage();
+    render(
+      <StrictMode>
+        <App
+          initialSaved={null}
+          initialConfig={{ playerCount: 4, level: 'debutant', name: 'Moi', seed: 424_242 }}
+        />
+      </StrictMode>,
+    );
+    // The bots bid round to the human, which only happens if the client that
+    // the screen is holding is still connected to the host.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /Passe/ }).length).toBe(1), {
+      timeout: 5000,
+    });
+  });
+});
 
 describe('the app', () => {
   it('opens in French and can be switched to English and back', async () => {

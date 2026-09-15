@@ -145,7 +145,7 @@ export function ActionBar(props: ActionBarProps): JSX.Element {
       }
       return (
         <div className="actions">
-          <div className="prompt">
+          <div className={`prompt${can.myTurn ? ' turn' : ''}`}>
             {can.myTurn ? t.table.yourTurn : `${props.seatName(view.currentPlayer)}…`}
           </div>
         </div>

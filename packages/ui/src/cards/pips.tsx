@@ -35,16 +35,22 @@ export interface PipProps {
   y: number;
   size: number;
   opacity?: number;
+  /**
+   * Turn the pip upside down. On a real card every pip below the middle is
+   * inverted, so the face reads the same way up from either end.
+   */
+  flip?: boolean;
 }
 
-export function Pip({ suit, x, y, size, opacity }: PipProps): JSX.Element {
+export function Pip({ suit, x, y, size, opacity, flip }: PipProps): JSX.Element {
   const scale = size / 100;
+  const spin = flip ? `rotate(180 ${x} ${y}) ` : '';
   return (
     <path
       d={PATHS[suit]}
       fill={SUIT_COLOUR[suit]}
       opacity={opacity}
-      transform={`translate(${x - size / 2} ${y - size / 2}) scale(${scale})`}
+      transform={`${spin}translate(${x - size / 2} ${y - size / 2}) scale(${scale})`}
     />
   );
 }

@@ -461,4 +461,26 @@ describe('a solo game', () => {
     }
     game.close();
   });
+
+  it('holds the table between tricks so the last one can be gathered up', () => {
+    const delays: number[] = [];
+    const host = new GameHost({
+      playerCount: 4,
+      seats: botSeats(4),
+      seed: 12,
+      botDelayMs: 40,
+      trickPauseMs: 900,
+      schedule: (fn, ms) => {
+        delays.push(ms);
+        fn();
+      },
+    });
+    expect(host.handOver).toBe(true);
+    // A whole hand of four players is 18 tricks; every one of them but the
+    // first is led after the pause.
+    expect(delays.filter((ms) => ms === 900)).toHaveLength(17);
+    // The pause absorbs the thinking time rather than stacking on top of it.
+    expect(Math.max(...delays)).toBe(900);
+    expect(new Set(delays)).toEqual(new Set([40, 900]));
+  });
 });
