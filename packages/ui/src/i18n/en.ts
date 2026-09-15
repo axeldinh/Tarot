@@ -59,6 +59,7 @@ export const en: Dict = {
     away: 'disconnected',
     standIn: 'bot standing in',
     reconnecting: 'Reconnecting…',
+    resuming: 'Rejoining the table…',
   },
   level: {
     debutant: 'Beginner',

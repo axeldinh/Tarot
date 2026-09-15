@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { NearbyPlugin, SeatInfo, SessionSnapshot } from '@tarot/net';
-import { newSession } from '@tarot/net';
+import { newSession, recordHand } from '@tarot/net';
 import { App } from '../src/App.tsx';
 import { LobbyScreen } from '../src/screens/LobbyScreen.tsx';
 import { TablePlayScreen } from '../src/screens/TablePlayScreen.tsx';
@@ -422,5 +422,156 @@ describe('starting table play online', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
     });
     expect(screen.getByText(/ni via un relais en ligne/)).toBeTruthy();
+  });
+});
+
+describe('reconnecting to a table over the relay', () => {
+  it('lets a guest pick its seat back up after the page reloads mid-hand', async () => {
+    const store = installStorage();
+    const relay = new FakeRelay();
+    const { hostOnlineTable, joinOnlineTable } = await import('../src/state/useTableGame.ts');
+    const hosted = await hostOnlineTable({
+      relayUrl: relay.url,
+      playerCount: 3,
+      tableName: 'Chez Ana',
+      yourName: 'Ana',
+      level: 'debutant',
+      seed: 7,
+      socketFactory: relay.factory,
+    });
+    const code = hosted.server?.host.getSession().id as string;
+
+    const { unmount } = render(
+      <App
+        initialSaved={null}
+        nearby={null}
+        relayUrl={relay.url}
+        relaySocketFactory={relay.factory}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
+    });
+    await waitFor(() => screen.getByRole('button', { name: 'Rejoindre une tablée' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre une tablée' }));
+    });
+    fireEvent.change(screen.getByLabelText('Code de la tablée'), { target: { value: code } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre' }));
+    });
+    await waitFor(() => expect(screen.getByText('Salon')).toBeTruthy());
+
+    // A third player fills the table and the host deals.
+    const cam = await joinOnlineTable({
+      relayUrl: relay.url,
+      code,
+      yourName: 'Cam',
+      socketFactory: relay.factory,
+    });
+    await act(async () => {
+      hosted.client.start();
+    });
+    await waitFor(() => expect(document.querySelectorAll('.hand-card').length).toBe(24));
+    await waitFor(() => expect(store.getItem('tarot.table.v1')).toBeTruthy());
+    const savedToken = (JSON.parse(store.getItem('tarot.table.v1') as string) as { token: string })
+      .token;
+
+    // The page reloads: the whole component tree is torn down and rebuilt,
+    // with nothing left in memory but what was on disk.
+    unmount();
+    cleanup();
+
+    render(
+      <App
+        initialSaved={null}
+        nearby={null}
+        relayUrl={relay.url}
+        relaySocketFactory={relay.factory}
+      />,
+    );
+    // Straight back to the table, with the same seat's cards — no code to
+    // type in again, and no lobby to sit back down in.
+    await waitFor(() => expect(document.querySelectorAll('.hand-card').length).toBe(24));
+    expect(
+      (JSON.parse(store.getItem('tarot.table.v1') as string) as { token: string }).token,
+    ).toBe(savedToken);
+
+    cam.close();
+    hosted.close();
+  }, 30_000);
+
+  it('lets a host redeal under the same code after its own reload, with the scoreboard carried over', async () => {
+    const { hostOnlineTable } = await import('../src/state/useTableGame.ts');
+    const relay = new FakeRelay();
+    const original = await hostOnlineTable({
+      relayUrl: relay.url,
+      playerCount: 3,
+      tableName: 'Chez Ana',
+      yourName: 'Ana',
+      level: 'debutant',
+      seed: 7,
+      socketFactory: relay.factory,
+    });
+    const code = original.server?.host.getSession().id as string;
+    const carried = recordHand(
+      newSession({ id: code, playerCount: 3, seats: [], dealer: 0 }),
+      null,
+      0,
+    );
+    original.close();
+
+    // The reload: a fresh host under the same code, told to carry the old
+    // scoreboard over rather than start counting from zero.
+    const resumed = await hostOnlineTable({
+      relayUrl: relay.url,
+      code,
+      playerCount: 3,
+      tableName: 'Chez Ana',
+      yourName: 'Ana',
+      level: 'debutant',
+      seed: 99,
+      initialSession: carried,
+      socketFactory: relay.factory,
+    });
+    const session = resumed.server?.host.getSession();
+    expect(session?.id).toBe(code);
+    expect(session?.handsDealt).toBe(1);
+    // Not a half-played hand: back in the lobby, same as solo play's resume.
+    expect(session?.phase).toBe('lobby');
+    resumed.close();
+  });
+
+  it('clears what is on disk when the player leaves on purpose', async () => {
+    const store = installStorage();
+    const relay = new FakeRelay();
+    render(
+      <App
+        initialSaved={null}
+        nearby={null}
+        relayUrl={relay.url}
+        relaySocketFactory={relay.factory}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
+    });
+    await waitFor(() => screen.getByRole('button', { name: 'Créer une tablée' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une tablée' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '3' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une tablée' }));
+    });
+    await waitFor(() => expect(screen.getByText('Salon')).toBeTruthy());
+    await waitFor(() => expect(store.getItem('tarot.table.v1')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Quitter la tablée' }));
+    });
+    expect(store.getItem('tarot.table.v1')).toBeNull();
   });
 });

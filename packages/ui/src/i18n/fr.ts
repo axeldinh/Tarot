@@ -60,6 +60,7 @@ export const fr = {
     away: 'déconnecté',
     standIn: 'robot remplaçant',
     reconnecting: 'Reconnexion…',
+    resuming: 'Reprise de la tablée…',
   },
   level: {
     debutant: 'Débutant',
