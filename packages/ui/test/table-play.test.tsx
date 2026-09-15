@@ -4,10 +4,12 @@ import type { NearbyPlugin, SeatInfo, SessionSnapshot } from '@tarot/net';
 import { newSession } from '@tarot/net';
 import { App } from '../src/App.tsx';
 import { LobbyScreen } from '../src/screens/LobbyScreen.tsx';
+import { TablePlayScreen } from '../src/screens/TablePlayScreen.tsx';
 import { SeatList } from '../src/components/SeatList.tsx';
 import { I18nContext, fr } from '../src/i18n/index.ts';
 import { installStorage } from './setup.ts';
 import { FakeRadio } from '../../net/test/fake-nearby.ts';
+import { FakeRelay } from '../../net/test/fake-relay.ts';
 
 afterEach(cleanup);
 
@@ -275,4 +277,150 @@ describe('starting table play', () => {
     expect(screen.queryByRole('button', { name: 'Distribuer' })).toBeNull();
     hosted.close();
   }, 30_000);
+});
+
+describe('starting table play online', () => {
+  it('hosts a table over the relay, seats the players who type in the code, and deals', async () => {
+    installStorage();
+    const relay = new FakeRelay();
+    render(
+      <App
+        initialSaved={null}
+        nearby={null}
+        relayUrl={relay.url}
+        relaySocketFactory={relay.factory}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
+    });
+    await waitFor(() => screen.getByRole('button', { name: 'Créer une tablée' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une tablée' }));
+    });
+    // Three seats, so the test only needs two more browsers.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '3' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une tablée' }));
+    });
+
+    await waitFor(() => expect(screen.getByText('Salon')).toBeTruthy());
+    const code = screen.getByTestId('table-code').textContent as string;
+    expect(code).toHaveLength(6);
+
+    const { joinOnlineTable } = await import('../src/state/useTableGame.ts');
+    const guests: Awaited<ReturnType<typeof joinOnlineTable>>[] = [];
+    for (const name of ['Ben', 'Cam']) {
+      await act(async () => {
+        guests.push(
+          await joinOnlineTable({
+            relayUrl: relay.url,
+            code,
+            yourName: name,
+            socketFactory: relay.factory,
+          }),
+        );
+      });
+    }
+
+    await waitFor(() =>
+      expect(within(screen.getByTestId('seat-list')).getByText('Ben')).toBeTruthy(),
+    );
+    const deal = screen.getByRole('button', { name: 'Distribuer' });
+    expect(deal.hasAttribute('disabled')).toBe(false);
+
+    await act(async () => {
+      fireEvent.click(deal);
+    });
+    await waitFor(() => expect(document.querySelectorAll('.hand-card').length).toBe(24));
+    for (const guest of guests) {
+      expect(guest.client.getState().view?.hand).toHaveLength(24);
+      guest.close();
+    }
+  }, 30_000);
+
+  it('joins a table over the relay by typing in its code', async () => {
+    installStorage();
+    const relay = new FakeRelay();
+    const { hostOnlineTable } = await import('../src/state/useTableGame.ts');
+    const hosted = await hostOnlineTable({
+      relayUrl: relay.url,
+      playerCount: 3,
+      tableName: 'Chez Ana',
+      yourName: 'Ana',
+      level: 'debutant',
+      seed: 7,
+      socketFactory: relay.factory,
+    });
+    const code = hosted.server?.host.getSession().id as string;
+
+    render(
+      <App
+        initialSaved={null}
+        nearby={null}
+        relayUrl={relay.url}
+        relaySocketFactory={relay.factory}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
+    });
+    await waitFor(() => screen.getByRole('button', { name: 'Rejoindre une tablée' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre une tablée' }));
+    });
+
+    fireEvent.change(screen.getByLabelText('Code de la tablée'), { target: { value: code } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre' }));
+    });
+
+    await waitFor(() => expect(screen.getByText('Salon')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Distribuer' })).toBeNull();
+    hosted.close();
+  });
+
+  it('gives up and says so if nobody is behind the code', async () => {
+    const relay = new FakeRelay();
+    const { joinOnlineTable } = await import('../src/state/useTableGame.ts');
+    await expect(
+      joinOnlineTable({
+        relayUrl: relay.url,
+        code: 'zzzzzz',
+        yourName: 'Ana',
+        timeoutMs: 20,
+        socketFactory: relay.factory,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('shows the error the app surfaces for a code nobody is behind', () => {
+    render(
+      withFrench(
+        <TablePlayScreen
+          plugin={null}
+          relayUrl="https://relay.test"
+          yourName="Ana"
+          onChoose={() => {}}
+          onBack={() => {}}
+          joinError="Aucune tablée avec ce code. Vérifiez le code et réessayez."
+          onDismissJoinError={() => {}}
+        />,
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Rejoindre une tablée' }));
+    expect(screen.getByText(/Aucune tablée avec ce code/)).toBeTruthy();
+  });
+
+  it('says plainly that a browser with no relay configured cannot do it either', async () => {
+    installStorage();
+    render(<App initialSaved={null} nearby={null} relayUrl={null} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jouer en tablée' }));
+    });
+    expect(screen.getByText(/ni via un relais en ligne/)).toBeTruthy();
+  });
 });

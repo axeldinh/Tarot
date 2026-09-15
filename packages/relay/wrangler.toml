@@ -1,0 +1,23 @@
+# Cloudflare Worker config for the table-play relay.
+#
+# `pnpm --filter @tarot/relay deploy` (or the deploy-relay.yml workflow) needs
+# a Cloudflare account and an API token in CLOUDFLARE_API_TOKEN — see
+# packages/relay/README.md for the one-time setup.
+
+name = "tarot-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "TableRoomObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TableRoomObject"]
+
+# Uncomment and set once the app is deployed somewhere other than "anyone with
+# the URL", to stop other people's traffic from spending this Worker's free
+# quota:
+# [vars]
+# ALLOWED_ORIGINS = "https://<you>.github.io"

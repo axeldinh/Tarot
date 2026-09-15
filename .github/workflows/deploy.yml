@@ -33,6 +33,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @tarot/ui build
+        env:
+          # The URL of the deployed packages/relay Worker (see its README), so
+          # browsers can play a table together over the internet. Set this as
+          # a repository variable once the relay has been deployed; table
+          # play over the web stays off in a build with nothing set here —
+          # the same as before the relay existed.
+          VITE_RELAY_URL: ${{ vars.VITE_RELAY_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

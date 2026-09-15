@@ -1,0 +1,39 @@
+# Publishes the table-play relay (packages/relay) to Cloudflare Workers.
+#
+# Needs a one-time setup a human has to do — see packages/relay/README.md:
+# a (free) Cloudflare account, an API token in the CLOUDFLARE_API_TOKEN repo
+# secret, and the resulting Worker URL in the VITE_RELAY_URL repo variable so
+# deploy.yml bakes it into the web build. Until CLOUDFLARE_API_TOKEN is set,
+# this workflow fails at the deploy step — table play over the web stays off,
+# the same as before the relay existed.
+name: Deploy relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/relay/**'
+      - '.github/workflows/deploy-relay.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-relay
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tarot/relay typecheck
+      - run: pnpm --filter @tarot/relay test
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: packages/relay

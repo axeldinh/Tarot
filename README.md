@@ -32,6 +32,7 @@ packages/engine            rules and scoring: no dependencies, no I/O
 packages/bots              AI, depends only on the engine
 packages/net               the host, the wire protocol, and the transports
 packages/capacitor-nearby  the native bridge to Nearby Connections
+packages/relay             the WebSocket relay browsers play through, on Cloudflare Workers
 packages/ui                React app
 docs/                      spec and architecture decisions
 ```
@@ -212,8 +213,9 @@ only ever holds a `TableClient`.
 ```
 TableScreen ─▶ TableClient ─▶ Transport ─▶ TableServer ─▶ GameHost ─▶ engine
                                   │
-                 LocalTransport          NearbyTransport
-                 (solo, one process)     (the other phones)
+                 LocalTransport   NearbyTransport   RelayTransport
+                 (solo, one       (the other         (the other
+                 process)         phones)            browsers)
 ```
 
 Playing solo runs the whole of it: sitting down in a seat, being issued a token,
@@ -229,8 +231,12 @@ likely to be tested.
 
 ## Table play
 
-Everyone in the same room, each on their own phone, with no internet. Start a
-table or join one nearby; empty seats can be filled with bots.
+Two ways to sit down together, chosen by which build you're in. In the Android
+app: everyone in the same room, each on their own phone, with no internet —
+start a table or join one nearby, over `NearbyTransport`. In a browser: anyone
+with the table's code, wherever they are, over `RelayTransport` and the relay
+in `packages/relay` — see [Online play](#online-play). Either way, empty seats
+can be filled with bots.
 
 **Reconnecting.** A radio link drops for all sorts of dull reasons, so a seat
 belongs to a *token*, not to an endpoint id — a phone that comes back gets a new
@@ -281,6 +287,25 @@ Netlify or Cloudflare Pages work the same way — build `pnpm install && pnpm
 so the same build serves from a domain root or a subdirectory; set `VITE_BASE=/`
 if you want them absolute.
 
+### Online play
+
+A browser has no radio, so it cannot use Nearby — `TablePlayScreen` shows the
+online flow instead, over `RelayTransport`. Hosting generates a short code
+(also the session id, so nothing else needs to hand it out); joining is typing
+that code in, rather than Nearby's list of what's nearby. Same host-owns-the-
+state architecture either way: the relay is a dumb pipe that hands out peer
+ids and forwards JSON frames within one table's room — it never sees a card, a
+seat or a turn, only bytes — while `TableServer`/`GameHost` still run on
+whichever browser tab hosted the table.
+
+The relay is `packages/relay`: a Cloudflare Worker and Durable Object, one
+instance per table, deployed by `.github/workflows/deploy-relay.yml` on the
+free tier. It needs one manual, one-time setup nobody but the app's owner can
+do — a Cloudflare account, an API token, two GitHub secrets/variables — see
+[`packages/relay/README.md`](packages/relay/README.md). Until that is done,
+`VITE_RELAY_URL` is unset and the web build behaves exactly as it did before
+this existed: table play stays Android-only.
+
 ### Android
 
 ```sh
@@ -324,13 +349,18 @@ Two things follow from not having had a device:
 
 | Package | Tests | Statements | Branches |
 |---|---|---|---|
-| `engine` | 137 | 99.8% | 98.8% |
-| `bots` | 73 | 98.9% | 95.5% |
-| `net` | 66 | 91.3% | 88.4% |
-| `ui` | 72 | 97.5% | 89.3% |
+| `engine` | 140 | 99.8% | 99.1% |
+| `bots` | 90 | 99.1% | 95.6% |
+| `net` | 78 | 92.3% | 87.9% |
+| `ui` | 81 | 97.7% | 89.8% |
+| `relay` | 10 | 97.0% | 96.8% |
 
 The engine's threshold is the spec's 90%; the others are set a little lower on
 branches, where a defensive `catch` is not worth contorting a test for.
+`relay`'s numbers are for `src/room.ts` — the pure routing logic — only;
+`src/index.ts`, the Cloudflare Worker/Durable Object shell, can't run outside
+the Workers runtime, the same reason `capacitor-nearby` carries no coverage
+number of its own.
 
 Beyond the unit tests, CI runs four things that a unit test cannot tell you:
 

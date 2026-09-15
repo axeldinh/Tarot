@@ -11,6 +11,8 @@ export interface LobbyScreenProps {
   onStart(): void;
   onLeave(): void;
   rejection: string | null;
+  /** The code to read out to other players, for the device running an online table. */
+  code?: string | null;
 }
 
 /** Who is at the table, and — for the device running it — the deal button. */
@@ -22,6 +24,7 @@ export function LobbyScreen({
   onStart,
   onLeave,
   rejection,
+  code,
 }: LobbyScreenProps): JSX.Element {
   const { t } = useI18n();
   const waiting = session.seats.filter(
@@ -31,6 +34,15 @@ export function LobbyScreen({
   return (
     <div className="screen">
       <h2>{t.table_play.lobby}</h2>
+      {code && (
+        <p className="muted">
+          {t.table_play.shareCode}
+          <br />
+          <strong data-testid="table-code" style={{ fontSize: '1.5em', letterSpacing: '0.15em' }}>
+            {code}
+          </strong>
+        </p>
+      )}
       <p className="muted">{waiting > 0 ? t.table_play.waiting : ''}</p>
 
       <SeatList seats={session.seats} self={self} canArrange={isOwner} onSetSeat={onSetSeat} />

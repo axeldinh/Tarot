@@ -17,23 +17,28 @@ deleted, deliberately — do not recreate it.
 ```
 packages/engine   pure TS rules + scoring, zero deps, zero I/O, seeded RNG
 packages/bots     three levels, heuristics + Monte-Carlo determinisation
-packages/net      authoritative host, protocol, table server/client, Nearby transport
+packages/net      authoritative host, protocol, table server/client, Nearby + relay transports
 packages/ui       React screens, SVG card faces, i18n
 packages/capacitor-nearby   hand-written Java Capacitor plugin (Google Nearby Connections)
-docs/adr-transport.md  transport decision, and the open two-device gate
+packages/relay    WebSocket relay for browser table play: Cloudflare Worker + Durable Object
+docs/adr-transport.md  transport decisions, and the open gates (two-device Nearby, relay deploy)
 docs/spec.md           the rules as implemented
 ```
 
-CI is `.github/workflows/ci.yml` (jobs: `build`, `offline`, `android`) plus `deploy.yml`,
-which publishes the PWA to GitHub Pages on every push to `main`. The APK is produced by the
-`android` job as the `tarot-debug-apk` workflow artefact.
+CI is `.github/workflows/ci.yml` (jobs: `build`, `offline`, `android`) plus `deploy.yml` and
+`deploy-relay.yml`, which publish the PWA to GitHub Pages and the relay to Cloudflare Workers
+on every push to `main`. The APK is produced by the `android` job as the `tarot-debug-apk`
+workflow artefact.
 
 ## Invariants — do not break these
 
 These come from the project's original specification and are load-bearing:
 
 - **No account system, no telemetry, no ads, no external API calls at runtime.** The game
-  must work fully in aeroplane mode.
+  must work fully in aeroplane mode. Online table play (`RelayTransport`, `packages/relay`) is
+  the one deliberate exception: it is opt-in, off entirely unless `VITE_RELAY_URL` is
+  configured, and the only network traffic it adds is JSON game messages to our own relay —
+  no account, no telemetry, no third party. Solo play must stay fully offline regardless.
 - **Bots must never see hidden information.** The entire bot API is
   `decide(view: PlayerView): Action`. `PlayerView` has no field carrying another player's
   hand, the unseen chien, or the taker's écart. This is enforced by the *type*, not by
@@ -50,7 +55,7 @@ These come from the project's original specification and are load-bearing:
 ## Verifying a change
 
 ```bash
-pnpm typecheck && pnpm test          # all four packages
+pnpm typecheck && pnpm test          # every package that has tests
 pnpm test:coverage                   # engine is held above 90%
 pnpm --filter @tarot/ui build
 CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
@@ -76,6 +81,10 @@ several commits before anyone looked at its conclusion.
   unreachable and **the APK cannot be built locally**. CI builds it. `check:android`
   verifies everything about the Android project that can be checked without an SDK.
 - All image hosts (Wikimedia, Openclipart, …) are blocked.
+- `wrangler dev` (the real `workerd` runtime, run locally) works here and was used to smoke-test
+  online table play end-to-end with Playwright across two browser contexts — see Open Items
+  below. An actual `wrangler deploy` needs a Cloudflare account and API token, neither of which
+  exists in this environment — see `packages/relay/README.md`.
 - Source files are `erasableSyntaxOnly` and imports use explicit `.ts` specifiers, so
   `node --experimental-strip-types` runs them directly. That is why `Bid` is a const object
   and not an `enum`. Keep it that way.
@@ -108,6 +117,16 @@ several commits before anyone looked at its conclusion.
    work; that gate is still formally open. `docs/adr-transport.md` has the exact walkthrough
    and the three most likely failure modes. Needs two Android phones and the APK.
 2. The debug APK is signed with the debug key only; there is no release signing config.
+3. **The relay has never been deployed to a real Cloudflare account**, and cannot be from this
+   environment — no account or API token is available here. What *has* been run here is
+   `wrangler dev` (the real Workers runtime, locally) with the UI dev server pointed at it and
+   two Playwright browser contexts hosting/joining a table over it — a full hand dealt, each
+   browser holding only its own cards. So the gap is narrower than "unproven": it's a real
+   Cloudflare deploy, and confirming two browsers reach it over the actual internet.
+   `packages/relay/README.md` has the exact one-time setup (`CLOUDFLARE_API_TOKEN` secret, then
+   `VITE_RELAY_URL` variable once deployed). Until that is done, `VITE_RELAY_URL` is unset and
+   the web build shows table play as unavailable, exactly as it did before this existed —
+   nothing breaks, the feature is just off. `docs/adr-transport.md`'s addendum has the detail.
 
 ## Conventions
 

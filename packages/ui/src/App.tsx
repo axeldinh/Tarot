@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { NearbyConnections, nearbyAvailable } from '@tarot/capacitor-nearby';
-import type { NearbyPlugin, SeatKind } from '@tarot/net';
+import type { NearbyPlugin, RelaySocketFactory, SeatKind } from '@tarot/net';
 import { ScoreBreakdown } from './components/ScoreBreakdown.tsx';
 import { DEFAULT_LANG, DICTS, I18nContext, type Lang } from './i18n/index.ts';
 import { LobbyScreen } from './screens/LobbyScreen.tsx';
@@ -17,11 +17,26 @@ import {
   type SavedGame,
 } from './state/storage.ts';
 import { useSoloGame } from './state/useSoloGame.ts';
-import { hostTable, joinTable, useTable, type TableRole } from './state/useTableGame.ts';
+import {
+  hostOnlineTable,
+  hostTable,
+  joinOnlineTable,
+  joinTable,
+  useTable,
+  type TableRole,
+} from './state/useTableGame.ts';
 
 type Screen = 'setup' | 'solo' | 'table-setup' | 'table' | 'rules';
 
 type Live = Awaited<ReturnType<typeof hostTable>>;
+
+/**
+ * Where the web build's relay lives, so browsers can play together over the
+ * internet instead of Nearby's local radio. Unset in a build nobody has
+ * configured yet — table play then just isn't offered outside the Android
+ * app, the same as before this existed.
+ */
+const RELAY_URL = (import.meta.env.VITE_RELAY_URL as string | undefined) ?? null;
 
 export interface AppProps {
   /** Injected in tests so a run does not touch the real store. */
@@ -35,9 +50,20 @@ export interface AppProps {
   initialConfig?: GameConfig | null;
   /** Injected in tests; in the app it is the Capacitor plugin, or nothing. */
   nearby?: NearbyPlugin | null;
+  /** Injected in tests; in the app it is `VITE_RELAY_URL`, or nothing. */
+  relayUrl?: string | null;
+  /** Injected in tests; in the app it is the real `WebSocket`. */
+  relaySocketFactory?: RelaySocketFactory;
 }
 
-export function App({ initialSaved, initialLang, initialConfig, nearby }: AppProps = {}): JSX.Element {
+export function App({
+  initialSaved,
+  initialLang,
+  initialConfig,
+  nearby,
+  relayUrl,
+  relaySocketFactory,
+}: AppProps = {}): JSX.Element {
   const [lang, setLangState] = useState<Lang>(() => initialLang ?? loadLang() ?? DEFAULT_LANG);
   const [saved, setSaved] = useState<SavedGame | null>(() =>
     initialSaved !== undefined ? initialSaved : loadGame(),
@@ -48,7 +74,10 @@ export function App({ initialSaved, initialLang, initialConfig, nearby }: AppPro
   const [returnTo, setReturnTo] = useState<Screen>('setup');
   const [live, setLive] = useState<Live | null>(null);
   const [role, setRole] = useState<TableRole>('guest');
+  const [onlineHost, setOnlineHost] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [yourName, setYourName] = useState('');
+  const relay = relayUrl !== undefined ? relayUrl : RELAY_URL;
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next);
@@ -95,6 +124,7 @@ export function App({ initialSaved, initialLang, initialConfig, nearby }: AppPro
     table.leave();
     live?.close();
     setLive(null);
+    setOnlineHost(false);
     setScreen('setup');
   }, [live, table]);
 
@@ -105,25 +135,57 @@ export function App({ initialSaved, initialLang, initialConfig, nearby }: AppPro
 
   const chooseTable = useCallback(
     (choice: TableChoice) => {
-      if (!plugin) return;
       const name = yourName || DICTS[lang].setup.defaultName;
-      const started =
-        choice.kind === 'host'
-          ? hostTable({
-              plugin,
-              playerCount: choice.playerCount,
-              tableName: choice.tableName,
-              yourName: name,
-              level: choice.level,
-            })
-          : joinTable({ plugin, table: choice.table, yourName: name });
-      setRole(choice.kind === 'host' ? 'host' : 'guest');
-      void started.then((game) => {
-        setLive(game);
-        setScreen('table');
-      });
+      let started: Promise<Live>;
+      switch (choice.kind) {
+        case 'host':
+          if (!plugin) return;
+          started = hostTable({
+            plugin,
+            playerCount: choice.playerCount,
+            tableName: choice.tableName,
+            yourName: name,
+            level: choice.level,
+          });
+          break;
+        case 'join':
+          if (!plugin) return;
+          started = joinTable({ plugin, table: choice.table, yourName: name });
+          break;
+        case 'host-online':
+          if (!relay) return;
+          started = hostOnlineTable({
+            relayUrl: relay,
+            playerCount: choice.playerCount,
+            tableName: choice.tableName,
+            yourName: name,
+            level: choice.level,
+            ...(relaySocketFactory ? { socketFactory: relaySocketFactory } : {}),
+          });
+          break;
+        case 'join-online':
+          if (!relay) return;
+          started = joinOnlineTable({
+            relayUrl: relay,
+            code: choice.code,
+            yourName: name,
+            ...(relaySocketFactory ? { socketFactory: relaySocketFactory } : {}),
+          });
+          break;
+      }
+      setRole(choice.kind === 'host' || choice.kind === 'host-online' ? 'host' : 'guest');
+      setOnlineHost(choice.kind === 'host-online');
+      setJoinError(null);
+      void started
+        .then((game) => {
+          setLive(game);
+          setScreen('table');
+        })
+        .catch(() => {
+          setJoinError(DICTS[lang].table_play.notFound);
+        });
     },
-    [plugin, yourName, lang],
+    [plugin, relay, relaySocketFactory, yourName, lang],
   );
 
   if (screen === 'rules') {
@@ -142,9 +204,12 @@ export function App({ initialSaved, initialLang, initialConfig, nearby }: AppPro
         <div className="app">
           <TablePlayScreen
             plugin={plugin}
+            relayUrl={relay}
             yourName={yourName || DICTS[lang].setup.defaultName}
             onChoose={chooseTable}
             onBack={() => setScreen('setup')}
+            joinError={joinError}
+            onDismissJoinError={() => setJoinError(null)}
           />
         </div>
       </I18nContext.Provider>
@@ -190,6 +255,7 @@ export function App({ initialSaved, initialLang, initialConfig, nearby }: AppPro
             onStart={() => table.start()}
             onLeave={leaveTable}
             rejection={game.rejection?.message ?? null}
+            code={onlineHost ? session.id : null}
           />
         )}
 

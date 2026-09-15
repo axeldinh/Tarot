@@ -1,42 +1,56 @@
 import { useEffect, useState, type JSX } from 'react';
 import type { PlayerCount } from '@tarot/engine';
 import type { Level } from '@tarot/bots';
-import type { DiscoveredTable, NearbyPlugin } from '@tarot/net';
+import { CODE_LENGTH, type DiscoveredTable, type NearbyPlugin } from '@tarot/net';
 import { useI18n } from '../i18n/index.ts';
 import { useNearbyTables } from '../state/useTableGame.ts';
 
 export type TableChoice =
   | { kind: 'host'; playerCount: PlayerCount; tableName: string; level: Level }
-  | { kind: 'join'; table: DiscoveredTable };
+  | { kind: 'join'; table: DiscoveredTable }
+  | { kind: 'host-online'; playerCount: PlayerCount; tableName: string; level: Level }
+  | { kind: 'join-online'; code: string };
 
 export interface TablePlayScreenProps {
   /** Null when this build has no radio — a browser, for instance. */
   plugin: NearbyPlugin | null;
+  /** Null when this build has no relay configured, so online play is off too. */
+  relayUrl: string | null;
   yourName: string;
   onChoose(choice: TableChoice): void;
   onBack(): void;
+  /** Set after a join-online attempt that never found a table. */
+  joinError: string | null;
+  onDismissJoinError(): void;
 }
 
 const COUNTS: PlayerCount[] = [3, 4, 5];
 
 /**
- * Start a table or join one nearby.
+ * Start a table or join one, over whichever transport this build has: Nearby
+ * on Android, the web relay in a browser.
  *
- * Permissions are asked for here and not before: a card game asking for
- * Bluetooth needs to say why first, and somebody who only ever plays solo should
- * never see the prompt at all.
+ * Nearby's permissions are asked for here and not before: a card game asking
+ * for Bluetooth needs to say why first, and somebody who only ever plays solo
+ * should never see the prompt at all. Online play needs no such prompt — a
+ * WebSocket needs nobody's permission.
  */
 export function TablePlayScreen({
   plugin,
+  relayUrl,
   yourName,
   onChoose,
   onBack,
+  joinError,
+  onDismissJoinError,
 }: TablePlayScreenProps): JSX.Element {
   const { t } = useI18n();
+  const online = !plugin && relayUrl !== null;
   const [granted, setGranted] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'choose' | 'host' | 'join'>('choose');
   const [playerCount, setPlayerCount] = useState<PlayerCount>(4);
   const [tableName, setTableName] = useState(`${t.app.title} — ${yourName}`);
+  const [codeInput, setCodeInput] = useState('');
   const tables = useNearbyTables(plugin, mode === 'join' && granted === true);
 
   useEffect(() => {
@@ -45,11 +59,16 @@ export function TablePlayScreen({
     // Asked once, when the player first opens this screen.
   }, [plugin]);
 
-  if (!plugin) {
+  const chooseMode = (next: 'choose' | 'host' | 'join'): void => {
+    onDismissJoinError();
+    setMode(next);
+  };
+
+  if (!plugin && !online) {
     return (
       <div className="screen">
         <h2>{t.table_play.heading}</h2>
-        <p className="muted">{t.table_play.androidOnly}</p>
+        <p className="muted">{t.table_play.notConfigured}</p>
         <button type="button" onClick={onBack}>
           {t.rules.back}
         </button>
@@ -57,7 +76,7 @@ export function TablePlayScreen({
     );
   }
 
-  if (granted === false) {
+  if (granted === false && plugin) {
     return (
       <div className="screen">
         <h2>{t.table_play.permissions}</h2>
@@ -114,7 +133,7 @@ export function TablePlayScreen({
             className="primary"
             onClick={() =>
               onChoose({
-                kind: 'host',
+                kind: online ? 'host-online' : 'host',
                 playerCount,
                 tableName: tableName.trim() || t.app.title,
                 level: 'normal',
@@ -123,7 +142,49 @@ export function TablePlayScreen({
           >
             {t.table_play.host}
           </button>
-          <button type="button" className="ghost" onClick={() => setMode('choose')}>
+          <button type="button" className="ghost" onClick={() => chooseMode('choose')}>
+            {t.rules.back}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'join' && online) {
+    const code = codeInput.trim().toLowerCase();
+    const valid = code.length === CODE_LENGTH;
+    return (
+      <div className="screen">
+        <h2>{t.table_play.join}</h2>
+        <div className="field">
+          <label htmlFor="table-code">{t.table_play.codeLabel}</label>
+          <input
+            id="table-code"
+            type="text"
+            inputMode="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            maxLength={CODE_LENGTH}
+            placeholder={t.table_play.codePlaceholder}
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+          />
+        </div>
+        {joinError && (
+          <p className="note" style={{ color: 'var(--danger)' }}>
+            {joinError}
+          </p>
+        )}
+        <div className="stack">
+          <button
+            type="button"
+            className="primary"
+            disabled={!valid}
+            onClick={() => onChoose({ kind: 'join-online', code })}
+          >
+            {t.table_play.joinShort}
+          </button>
+          <button type="button" className="ghost" onClick={() => chooseMode('choose')}>
             {t.rules.back}
           </button>
         </div>
@@ -161,7 +222,7 @@ export function TablePlayScreen({
           ))}
         </ul>
         <div className="stack">
-          <button type="button" className="ghost" onClick={() => setMode('choose')}>
+          <button type="button" className="ghost" onClick={() => chooseMode('choose')}>
             {t.rules.back}
           </button>
         </div>
@@ -172,12 +233,12 @@ export function TablePlayScreen({
   return (
     <div className="screen">
       <h2>{t.table_play.heading}</h2>
-      <p className="muted">{t.table_play.intro}</p>
+      <p className="muted">{online ? t.table_play.onlineIntro : t.table_play.intro}</p>
       <div className="stack">
-        <button type="button" className="primary" onClick={() => setMode('host')}>
+        <button type="button" className="primary" onClick={() => chooseMode('host')}>
           {t.table_play.host}
         </button>
-        <button type="button" onClick={() => setMode('join')}>
+        <button type="button" onClick={() => chooseMode('join')}>
           {t.table_play.join}
         </button>
         <button type="button" className="ghost" onClick={onBack}>

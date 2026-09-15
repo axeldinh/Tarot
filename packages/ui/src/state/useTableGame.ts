@@ -2,13 +2,16 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import {
   LocalNetwork,
   NearbyTransport,
+  RelayTransport,
   TableClient,
   TableServer,
   combineTransports,
   discoverTables,
+  generateTableCode,
   type ClientState,
   type DiscoveredTable,
   type NearbyPlugin,
+  type RelaySocketFactory,
   type SeatKind,
   type SeatSpec,
 } from '@tarot/net';
@@ -122,6 +125,122 @@ export async function joinTable(options: JoinTableOptions): Promise<Live> {
     ...(options.token ? { token: options.token } : {}),
   });
   return { client, close: () => client.close() };
+}
+
+export interface HostOnlineTableOptions {
+  relayUrl: string;
+  playerCount: PlayerCount;
+  tableName: string;
+  yourName: string;
+  level: Level;
+  seed?: number;
+  /** Injected in tests; defaults to the real `WebSocket`. */
+  socketFactory?: RelaySocketFactory;
+}
+
+/**
+ * Run a table over the web relay instead of Nearby: any browser can play,
+ * not just two phones in the same room. The session id doubles as the code
+ * the host reads out — nothing else needs to hand it out separately.
+ */
+export async function hostOnlineTable(options: HostOnlineTableOptions): Promise<Live> {
+  const seed = options.seed ?? (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
+  const code = generateTableCode();
+  const seats: SeatSpec[] = Array.from({ length: options.playerCount }, (_, i) => ({
+    name: `Joueur ${i + 1}`,
+    kind: 'human' as const,
+    open: true,
+  }));
+
+  const radio = await RelayTransport.host({
+    url: options.relayUrl,
+    code,
+    ...(options.socketFactory ? { socketFactory: options.socketFactory } : {}),
+  });
+  // Same reasoning as hostTable(): the host's own player goes through the
+  // loopback, so the host is not a privileged special case in the game loop.
+  const loopback = new LocalNetwork();
+  const server = new TableServer(combineTransports([radio, loopback.host]), {
+    playerCount: options.playerCount,
+    seats,
+    seed,
+    sessionId: code,
+    tableName: options.tableName,
+    start: 'manual',
+    botDelayMs: 'natural',
+    trickPauseMs: TRICK_PAUSE_MS,
+    standInLevel: options.level,
+    hostPeer: LOCAL_PLAYER,
+  });
+
+  const client = new TableClient(loopback.connect(LOCAL_PLAYER), {
+    name: options.yourName,
+    seat: 0,
+  });
+  return {
+    client,
+    server,
+    close: () => {
+      client.close();
+      server.close();
+    },
+  };
+}
+
+export interface JoinOnlineTableOptions {
+  relayUrl: string;
+  code: string;
+  yourName: string;
+  /** Held from a previous sitting, to get the same seat back. */
+  token?: string;
+  /** How long to wait for a seat before giving up. Shortened in tests. */
+  timeoutMs?: number;
+  /** Injected in tests; defaults to the real `WebSocket`. */
+  socketFactory?: RelaySocketFactory;
+}
+
+const JOIN_TIMEOUT_MS = 8_000;
+
+/**
+ * Sit down at a table over the relay, by its code. Unlike Nearby's discovery
+ * list, a mistyped code fails silently at the transport level — the relay
+ * happily opens an empty room for it — so this waits for an actual seat and
+ * gives up rather than leaving the caller staring at a lobby that never
+ * arrives.
+ */
+export async function joinOnlineTable(options: JoinOnlineTableOptions): Promise<Live> {
+  const transport = await RelayTransport.join({
+    url: options.relayUrl,
+    code: options.code,
+    ...(options.socketFactory ? { socketFactory: options.socketFactory } : {}),
+  });
+  const client = new TableClient(transport, {
+    name: options.yourName,
+    ...(options.token ? { token: options.token } : {}),
+  });
+  try {
+    await waitForSeat(client, options.timeoutMs ?? JOIN_TIMEOUT_MS);
+  } catch (error) {
+    client.close();
+    throw error;
+  }
+  return { client, close: () => client.close() };
+}
+
+function waitForSeat(client: TableClient, timeoutMs: number): Promise<void> {
+  if (client.getState().seat !== null) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      off();
+      reject(new Error('no-such-table'));
+    }, timeoutMs);
+    const off = client.subscribe(() => {
+      if (client.getState().seat === null) return;
+      clearTimeout(timer);
+      off();
+      resolve();
+    });
+  });
 }
 
 /** Subscribe a component to a table this device is already part of. */

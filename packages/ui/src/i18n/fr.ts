@@ -27,13 +27,19 @@ export const fr = {
     heading: 'Jouer en tablée',
     intro:
       'Chacun sur son téléphone, autour de la même table. Aucune connexion internet n’est nécessaire.',
-    androidOnly:
-      'La tablée demande l’application Android : un navigateur ne peut pas ouvrir de liaison radio directe entre deux téléphones.',
+    notConfigured:
+      'La tablée n’est disponible ni via l’application Android, ni via un relais en ligne : aucun des deux n’est configuré sur ce build.',
+    onlineIntro:
+      'Chacun sur son appareil, où qu’il soit. Partagez le code de la tablée avec les autres joueurs pour qu’ils rejoignent.',
     host: 'Créer une tablée',
     join: 'Rejoindre une tablée',
     joinShort: 'Rejoindre',
     tableName: 'Nom de la tablée',
     seats: 'Places',
+    codeLabel: 'Code de la tablée',
+    codePlaceholder: 'ex. ab12cd',
+    shareCode: 'Partagez ce code avec les autres joueurs pour qu’ils rejoignent la tablée.',
+    notFound: 'Aucune tablée avec ce code. Vérifiez le code et réessayez.',
     searching: 'Recherche des tablées à proximité…',
     noTables: 'Aucune tablée trouvée pour l’instant.',
     freeSeats: (n: number) => `${n} place${n > 1 ? 's' : ''} libre${n > 1 ? 's' : ''}`,

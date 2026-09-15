@@ -26,13 +26,19 @@ export const en: Dict = {
     heading: 'Play at a table',
     intro:
       'Everyone on their own phone, around the same table. No internet connection is needed.',
-    androidOnly:
-      'Table play needs the Android app: a browser cannot open a direct radio link between two phones.',
+    notConfigured:
+      'Table play needs either the Android app or a configured online relay, and this build has neither.',
+    onlineIntro:
+      'Everyone on their own device, wherever they are. Share the table code with the others so they can join.',
     host: 'Create a table',
     join: 'Join a table',
     joinShort: 'Join',
     tableName: 'Table name',
     seats: 'Seats',
+    codeLabel: 'Table code',
+    codePlaceholder: 'e.g. ab12cd',
+    shareCode: 'Share this code with the others so they can join the table.',
+    notFound: 'No table with that code. Check the code and try again.',
     searching: 'Looking for tables nearby…',
     noTables: 'No tables found yet.',
     freeSeats: (n: number) => `${n} free seat${n > 1 ? 's' : ''}`,

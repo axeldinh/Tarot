@@ -204,4 +204,81 @@ If Nearby fails outright, the fallback is option B and this ADR gets superseded,
 not amended. That would mean writing a second `Transport`, and nothing above
 `packages/net` would change.
 
+## Addendum — a transport for browsers (implemented)
+
+Everything above answers "how do phones at the same table talk to each
+other with no internet." It does not answer a different question the app
+later needed: a browser has no radio, so it cannot be a `NearbyTransport`
+peer at all, Android app or not — the PWA build had *no* table-play transport,
+only solo play.
+
+A browser also cannot be option B's LAN server: a page cannot listen on a
+socket, only open one outward. So the fix is not option B revisited; it is a
+third kind of `Transport`, `RelayTransport`, that connects outward to a small
+piece of infrastructure this project now owns rather than to another peer
+directly.
+
+**Decision: a Cloudflare Worker + Durable Object relay**, one Durable Object
+instance per table (addressed by a short code the host shares), forwarding
+JSON frames between the sockets connected to it. It is a dumb pipe in exactly
+the sense `LocalNetwork` and `NearbyTransport` are — it hands out peer ids and
+resolves the address `'host'` to whoever holds that seat, and never sees a
+card, a seat or a turn.
+
+Why this over the alternatives:
+
+- **Not a LAN server (option B revisited).** Everyone would still need to be
+  on the same network or hotspot, which is exactly the setup friction that
+  made Nearby win the room-scale case. A relay reachable from anywhere removes
+  that requirement entirely — the whole point of adding this was letting
+  people play from *different* rooms.
+- **Not a public SaaS realtime service (Pusher, Ably, Firebase, …).** Any of
+  these would work, but they mean an account, a vendor, and usually a
+  usage-based bill for what is, for this app, a handful of concurrent tables.
+  Cloudflare Workers with Durable Objects is free at this scale (the SQLite
+  storage backend Durable Objects use is on the free plan), needs one
+  Cloudflare account rather than an account per person playing, and the
+  deploy is one `wrangler deploy` in CI — no server to keep patched or paying
+  for.
+- **Not self-hosted (a plain Node `ws` server on a VPS).** Possible, and kept
+  in mind as the fallback if Cloudflare Workers ever stop fitting, but it is
+  infrastructure somebody has to run and keep running, for a private app that
+  would rather have none.
+
+What was built:
+
+- `packages/relay` — `src/room.ts` is the pure, fully-tested routing logic
+  (peer ids, host takeover, addressing); `src/index.ts` is the thin Worker/
+  Durable Object shell around it, the same division `packages/capacitor-nearby`
+  makes between logic and native glue.
+- `RelayTransport` in `packages/net` — the fourth `Transport` implementation,
+  tested against `packages/net/test/fake-relay.ts`, an independent second
+  implementation of the wire contract (mirroring how `FakeRadio` never imports
+  the real Nearby plugin).
+- Online host/join screens in `packages/ui`, offered instead of Nearby's
+  "androidOnly" message whenever a build has no radio but does have a relay
+  configured.
+- `.github/workflows/deploy-relay.yml`, deploying on push to `main`.
+
+### Outstanding gate
+
+The one-time Cloudflare setup (account, API token, the resulting URL fed back
+into the web build) is a human step nobody but the app's owner can do — see
+[`packages/relay/README.md`](../packages/relay/README.md) for the exact steps.
+**It has not been done from this environment**: no Cloudflare account or API
+token was available here, so a real `wrangler deploy` and two browsers on two
+actual networks, reaching the relay over the open internet, are unproven.
+
+What *was* run here, against the real Workers runtime rather than a fake:
+`wrangler dev` (which runs `workerd`, the actual runtime, locally) serving
+`packages/relay`, with the built `@tarot/ui` dev server pointed at it via
+`VITE_RELAY_URL=http://localhost:8787`, driven by Playwright with two separate
+browser contexts. One hosted a table, got a code back, the other joined by
+typing it in; the lobby updated live in both; the host filled the last seat
+with a bot and dealt; each browser ended up with its own 24-card hand — nobody
+else's. That exercises the whole path — the Durable Object, the WebSocket
+upgrade, `RelayTransport`, `TableServer`/`GameHost`, the online host/join UI —
+for real, just not across the public internet or a second machine. What
+remains is narrower than the two-phone Nearby gate: a Cloudflare deploy, and
+confirming the relay is actually reachable from wherever the players are.
 
