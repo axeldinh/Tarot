@@ -99,6 +99,7 @@ export const fr = {
     noKing: 'On ne peut pas écarter un roi',
     noBout: 'On ne peut pas écarter un bout',
     tooManyTrumps: 'On n’écarte un atout que si on ne peut pas faire autrement',
+    fromChien: 'Vient du chien',
   },
   chelem: {
     heading: 'Annoncer un chelem ?',

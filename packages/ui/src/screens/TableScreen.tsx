@@ -194,6 +194,7 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
         cards={view.hand}
         playable={playable}
         chosen={new Set(chosen)}
+        fromChien={view.phase === 'discard' && view.chien ? new Set(view.chien) : undefined}
         cardWidth={58}
         choosing={can.myTurn && (view.phase === 'playing' || view.phase === 'discard')}
         onPlay={onCardTap}

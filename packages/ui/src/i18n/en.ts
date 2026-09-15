@@ -98,6 +98,7 @@ export const en: Dict = {
     noKing: 'A king cannot be buried',
     noBout: 'A bout cannot be buried',
     tooManyTrumps: 'A trump goes in the ecart only when nothing else can',
+    fromChien: 'From the chien',
   },
   chelem: {
     heading: 'Announce a chelem?',

@@ -15,7 +15,16 @@ import {
   type PlayerCount,
   type PlayerView,
 } from '@tarot/engine';
-import { LEVELS, LEVEL_NAMES, makeBot, playDeal, playHandWithBots, type Bot, type Level } from '../src/index.ts';
+import {
+  CONFIG,
+  LEVELS,
+  LEVEL_NAMES,
+  makeBot,
+  playDeal,
+  playHandWithBots,
+  type Bot,
+  type Level,
+} from '../src/index.ts';
 
 const TABLES: PlayerCount[] = [3, 4, 5];
 
@@ -110,10 +119,11 @@ describe('a table of bots', () => {
   it('pauses for a believable moment before moving', () => {
     for (const level of LEVELS) {
       const bot = makeBot(level, { seed: 4 });
+      const [minDelay, maxDelay] = CONFIG[level].delayMs;
       for (let i = 0; i < 50; i++) {
         const delay = bot.thinkingDelay();
-        expect(delay).toBeGreaterThanOrEqual(300);
-        expect(delay).toBeLessThanOrEqual(800);
+        expect(delay).toBeGreaterThanOrEqual(minDelay);
+        expect(delay).toBeLessThanOrEqual(maxDelay);
       }
     }
   });

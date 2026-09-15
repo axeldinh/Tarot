@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type JSX } from 'react';
 import { sortHand, type Card } from '@tarot/engine';
 import { CardFace } from '../cards/CardFace.tsx';
+import { useI18n } from '../i18n/index.ts';
 
 export interface HandProps {
   /** The hand, in any order: it is sorted here before being fanned. */
@@ -8,6 +9,12 @@ export interface HandProps {
   /** Cards that can be tapped. Everything else is dimmed and inert. */
   playable: ReadonlySet<Card>;
   chosen?: ReadonlySet<Card>;
+  /**
+   * Cards the taker just picked up from the chien, marked so they stand out
+   * among the rest of the hand while the ecart is being built — otherwise
+   * sorting mixes them in and there is no way to tell them apart.
+   */
+  fromChien?: ReadonlySet<Card>;
   cardWidth: number;
   /**
    * Whether a card is being asked for at all. While the table is bidding or
@@ -35,12 +42,14 @@ export function Hand({
   cards,
   playable,
   chosen,
+  fromChien,
   cardWidth,
   choosing,
   onPlay,
   onBlocked,
   highlight,
 }: HandProps): JSX.Element {
+  const { t } = useI18n();
   const [lifted, setLifted] = useState<Card | null>(null);
   const ordered = useMemo(() => sortHand(cards), [cards]);
   const middle = (ordered.length - 1) / 2;
@@ -70,12 +79,14 @@ export function Hand({
         {ordered.map((card, index) => {
           const can = playable.has(card);
           const isChosen = chosen?.has(card) ?? false;
+          const isFromChien = fromChien?.has(card) ?? false;
           const offset = index - middle;
           const angle = offset * step;
           const classes = [
             'hand-card',
             can ? 'playable' : choosing ? 'blocked' : 'idle',
             isChosen ? 'chosen' : '',
+            isFromChien ? 'from-chien' : '',
             lifted === card && can ? 'lifted' : '',
           ]
             .filter(Boolean)
@@ -86,6 +97,7 @@ export function Hand({
               type="button"
               className={classes}
               aria-disabled={choosing && !can}
+              aria-label={isFromChien ? t.ecart.fromChien : undefined}
               data-card={card}
               style={
                 {

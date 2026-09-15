@@ -18,6 +18,8 @@ export interface SoloOptions {
   botDelayMs?: number | 'natural';
   /** Time the last trick is left on the table before the next one starts. */
   trickPauseMs?: number;
+  /** Least time the chien stays face up before a bot taker buries it. */
+  chienRevealMs?: number;
   schedule?: (fn: () => void, ms: number) => void;
   /** Resume a session that was interrupted: the scoreboard carries over. */
   initialSession?: SessionSnapshot;
@@ -60,6 +62,7 @@ export function createSoloGame(options: SoloOptions): SoloGame {
     ...(options.initialSession ? { initialSession: options.initialSession } : {}),
     botDelayMs: options.botDelayMs ?? 'natural',
     ...(options.trickPauseMs === undefined ? {} : { trickPauseMs: options.trickPauseMs }),
+    ...(options.chienRevealMs === undefined ? {} : { chienRevealMs: options.chienRevealMs }),
     ...(options.schedule ? { schedule: options.schedule } : {}),
     start: 'manual',
   });

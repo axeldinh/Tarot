@@ -37,6 +37,13 @@ export interface HostOptions {
    * gets to be gathered up before the next card lands on an empty felt.
    */
   trickPauseMs?: number;
+  /**
+   * Least time the chien stays face up on the table before a bot taker buries
+   * it, on top of the usual bot delay. Everyone at the table sees the chien,
+   * not just the taker, so this floors how long it is visible even when the
+   * bot itself decides almost instantly.
+   */
+  chienRevealMs?: number;
   /** Injected so tests do not have to wait. */
   schedule?: (fn: () => void, ms: number) => void;
   sessionId?: string;
@@ -445,7 +452,11 @@ export class GameHost {
     // The pause absorbs the thinking time rather than being added to it: a bot
     // that wants 800ms to think has already used most of the pause up, and
     // stacking the two makes every trick feel like the table is asleep.
-    const pause = between ? (this.options.trickPauseMs ?? 0) : 0;
+    const pause = between
+      ? (this.options.trickPauseMs ?? 0)
+      : this.state.phase === 'discard'
+        ? (this.options.chienRevealMs ?? 0)
+        : 0;
     const delay = Math.max(thinking, pause);
 
     this.botPending = true;
