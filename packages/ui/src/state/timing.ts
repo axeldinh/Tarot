@@ -22,6 +22,7 @@ export const TRICK_PAUSE_MS = TRICK_HOLD_MS + TRICK_GATHER_MS;
  * The least the host will wait, when the taker is a bot, before the chien is
  * buried and the table moves on. Six cards face up is a lot to read; a bot can
  * decide its ecart in well under a second, which left everyone else at the
- * table almost nothing to look at.
+ * table almost nothing to look at. The first pass at this (1800ms) was still
+ * too quick to actually read six cards, so it is tripled.
  */
-export const CHIEN_REVEAL_MS = 1800;
+export const CHIEN_REVEAL_MS = 5400;
