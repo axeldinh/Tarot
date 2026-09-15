@@ -117,16 +117,16 @@ several commits before anyone looked at its conclusion.
    work; that gate is still formally open. `docs/adr-transport.md` has the exact walkthrough
    and the three most likely failure modes. Needs two Android phones and the APK.
 2. The debug APK is signed with the debug key only; there is no release signing config.
-3. **The relay has never been deployed to a real Cloudflare account**, and cannot be from this
-   environment — no account or API token is available here. What *has* been run here is
-   `wrangler dev` (the real Workers runtime, locally) with the UI dev server pointed at it and
-   two Playwright browser contexts hosting/joining a table over it — a full hand dealt, each
-   browser holding only its own cards. So the gap is narrower than "unproven": it's a real
-   Cloudflare deploy, and confirming two browsers reach it over the actual internet.
-   `packages/relay/README.md` has the exact one-time setup (`CLOUDFLARE_API_TOKEN` secret, then
-   `VITE_RELAY_URL` variable once deployed). Until that is done, `VITE_RELAY_URL` is unset and
-   the web build shows table play as unavailable, exactly as it did before this existed —
-   nothing breaks, the feature is just off. `docs/adr-transport.md`'s addendum has the detail.
+3. **The relay is deployed**, at `https://tarot-relay.axeldvc.workers.dev`, with
+   `VITE_RELAY_URL` set so the web build at `https://axeldinh.github.io/Tarot/` carries it —
+   done from outside this environment, which has no Cloudflare account or API token of its own.
+   What remains unverified: two browsers on two actual networks playing a table over the real
+   deployed relay. This environment's network access is an allowlist that does not include
+   `workers.dev` or `github.io`, so it could confirm the deploy succeeded (the GitHub Actions
+   logs) but not click through the live app. What *was* run here first, against the real
+   Workers runtime: `wrangler dev` locally with the UI dev server pointed at it and two
+   Playwright browser contexts hosting/joining a table over it — a full hand dealt, each browser
+   holding only its own cards. `docs/adr-transport.md`'s addendum has the detail.
 
 ## Conventions
 

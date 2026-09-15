@@ -262,12 +262,19 @@ What was built:
 
 ### Outstanding gate
 
-The one-time Cloudflare setup (account, API token, the resulting URL fed back
-into the web build) is a human step nobody but the app's owner can do — see
-[`packages/relay/README.md`](../packages/relay/README.md) for the exact steps.
-**It has not been done from this environment**: no Cloudflare account or API
-token was available here, so a real `wrangler deploy` and two browsers on two
-actual networks, reaching the relay over the open internet, are unproven.
+**Done, from outside this environment.** The app's owner set up
+`CLOUDFLARE_API_TOKEN`, registered the account's `workers.dev` subdomain, and
+`deploy-relay.yml` deployed successfully: the relay is live at
+`https://tarot-relay.axeldvc.workers.dev`, and `VITE_RELAY_URL` is set so the
+web build at `https://axeldinh.github.io/Tarot/` carries it. See
+[`packages/relay/README.md`](../packages/relay/README.md) for the exact steps,
+kept for anyone redoing this on a different account.
+
+What is still unverified: two browsers, on two actual networks, playing a
+table over the real deployed relay. This session's own network access is
+restricted to an allowlist that does not include `workers.dev` or
+`github.io`, so it could confirm the deploy succeeded (the workflow logs) but
+not click through the live app itself.
 
 What *was* run here, against the real Workers runtime rather than a fake:
 `wrangler dev` (which runs `workerd`, the actual runtime, locally) serving

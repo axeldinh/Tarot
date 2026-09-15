@@ -302,9 +302,11 @@ The relay is `packages/relay`: a Cloudflare Worker and Durable Object, one
 instance per table, deployed by `.github/workflows/deploy-relay.yml` on the
 free tier. It needs one manual, one-time setup nobody but the app's owner can
 do — a Cloudflare account, an API token, two GitHub secrets/variables — see
-[`packages/relay/README.md`](packages/relay/README.md). Until that is done,
-`VITE_RELAY_URL` is unset and the web build behaves exactly as it did before
-this existed: table play stays Android-only.
+[`packages/relay/README.md`](packages/relay/README.md). **Done**: the relay is
+live at `https://tarot-relay.axeldvc.workers.dev`, and `VITE_RELAY_URL` is set,
+so the deployed web build at `https://axeldinh.github.io/Tarot/` offers online
+play in a browser. In a build with neither the Android app nor
+`VITE_RELAY_URL` set, table play is simply unavailable rather than broken.
 
 ### Android
 
