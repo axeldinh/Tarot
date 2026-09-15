@@ -21,7 +21,17 @@ import {
   poigneeLabel,
 } from '../src/state/labels.ts';
 import { affordances, ecartState, hasPlayed, highestBid, reasonFor } from '../src/state/moves.ts';
-import { clearGame, loadGame, loadLang, saveGame, saveLang } from '../src/state/storage.ts';
+import {
+  clearGame,
+  clearOnlineTable,
+  loadGame,
+  loadLang,
+  loadOnlineTable,
+  saveGame,
+  saveLang,
+  saveOnlineTable,
+  type OnlineTableState,
+} from '../src/state/storage.ts';
 import { installBrokenStorage, installStorage } from './setup.ts';
 
 describe('labels', () => {
@@ -227,5 +237,62 @@ describe('what is kept on disk', () => {
     expect(() => clearGame()).not.toThrow();
     expect(() => saveLang('fr')).not.toThrow();
     expect(loadLang()).toBeNull();
+  });
+});
+
+describe('what is kept on disk for an online table', () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  const guestState: OnlineTableState = {
+    role: 'guest',
+    code: 'ab12cd',
+    yourName: 'Ben',
+    token: 't1',
+    playerCount: 4,
+    session: newSession({ id: 'ab12cd', playerCount: 4, seats: [], dealer: 0 }),
+  };
+
+  const hostState: OnlineTableState = {
+    role: 'host',
+    code: 'ab12cd',
+    yourName: 'Ana',
+    token: 't0',
+    playerCount: 4,
+    session: newSession({ id: 'ab12cd', playerCount: 4, seats: [], dealer: 1 }),
+    tableName: 'Chez Ana',
+    level: 'normal',
+  };
+
+  it('round-trips a guest and a host', () => {
+    expect(loadOnlineTable()).toBeNull();
+    saveOnlineTable(guestState);
+    expect(loadOnlineTable()).toEqual(guestState);
+    saveOnlineTable(hostState);
+    expect(loadOnlineTable()).toEqual(hostState);
+    clearOnlineTable();
+    expect(loadOnlineTable()).toBeNull();
+  });
+
+  it('treats anything it does not recognise as nothing saved', () => {
+    const store = installStorage();
+    store.setItem('tarot.table.v1', 'not json');
+    expect(loadOnlineTable()).toBeNull();
+    store.setItem('tarot.table.v1', JSON.stringify({ ...guestState, session: { nope: 1 } }));
+    expect(loadOnlineTable()).toBeNull();
+    store.setItem('tarot.table.v1', JSON.stringify({ ...guestState, playerCount: 9 }));
+    expect(loadOnlineTable()).toBeNull();
+    // A host without a table name or level cannot be re-hosted.
+    const { tableName: _tableName, ...noTableName } = hostState;
+    store.setItem('tarot.table.v1', JSON.stringify(noTableName));
+    expect(loadOnlineTable()).toBeNull();
+  });
+
+  it('survives a browser that refuses storage altogether', () => {
+    installBrokenStorage();
+    expect(() => saveOnlineTable(guestState)).not.toThrow();
+    expect(loadOnlineTable()).toBeNull();
+    expect(() => clearOnlineTable()).not.toThrow();
   });
 });

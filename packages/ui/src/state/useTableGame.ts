@@ -14,6 +14,7 @@ import {
   type RelaySocketFactory,
   type SeatKind,
   type SeatSpec,
+  type SessionSnapshot,
 } from '@tarot/net';
 import type { PlayerCount } from '@tarot/engine';
 import type { Level } from '@tarot/bots';
@@ -137,6 +138,18 @@ export interface HostOnlineTableOptions {
   seed?: number;
   /** Injected in tests; defaults to the real `WebSocket`. */
   socketFactory?: RelaySocketFactory;
+  /**
+   * Reuse a table code rather than minting a new one — how a host picks the
+   * table back up after its own page reloaded, so a guest still holding the
+   * old code can find it again.
+   */
+  code?: string;
+  /**
+   * Carry the scoreboard over from a session this device hosted before a
+   * reload wiped it out. As with solo play's resume, this redeals the current
+   * hand rather than reconstructing a half-played one.
+   */
+  initialSession?: SessionSnapshot;
 }
 
 /**
@@ -146,7 +159,7 @@ export interface HostOnlineTableOptions {
  */
 export async function hostOnlineTable(options: HostOnlineTableOptions): Promise<Live> {
   const seed = options.seed ?? (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
-  const code = generateTableCode();
+  const code = options.code ?? generateTableCode();
   const seats: SeatSpec[] = Array.from({ length: options.playerCount }, (_, i) => ({
     name: `Joueur ${i + 1}`,
     kind: 'human' as const,
@@ -173,6 +186,7 @@ export async function hostOnlineTable(options: HostOnlineTableOptions): Promise<
     chienRevealMs: CHIEN_REVEAL_MS,
     standInLevel: options.level,
     hostPeer: LOCAL_PLAYER,
+    ...(options.initialSession ? { initialSession: options.initialSession } : {}),
   });
 
   const client = new TableClient(loopback.connect(LOCAL_PLAYER), {

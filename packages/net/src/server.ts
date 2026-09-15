@@ -131,6 +131,13 @@ export class TableServer {
 
   close(): void {
     for (const off of this.unsubscribe) off();
+    // Unsubscribing stops this server reacting to the transport; it does not
+    // stop the transport itself, which over a real radio or a relay socket
+    // is a connection somebody is still holding open — and, for the host
+    // role, still holding the table's seat at the relay. Leaving it dangling
+    // meant a discarded host could keep squatting on a seat a fresh one
+    // needed.
+    this.transport.close();
   }
 }
 
