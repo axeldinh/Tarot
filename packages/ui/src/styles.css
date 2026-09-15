@@ -111,6 +111,16 @@ body {
   color: var(--accent);
   white-space: nowrap;
 }
+.called-king-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
 
 /* --- buttons ------------------------------------------------------------ */
 button {

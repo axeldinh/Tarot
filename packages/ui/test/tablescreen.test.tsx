@@ -231,6 +231,29 @@ describe('the table', () => {
     expect(LAYOUT[5].cardsPerPlayer).toBe(15);
   });
 
+  it('shows which king was called, for the whole table, in 5-player games', () => {
+    // Find a 5-player deal where someone actually takes the contract and
+    // calls a king, so the chip has something to show.
+    let host: GameHost | null = null;
+    let apiOf: (() => SoloGameApi) | null = null;
+    for (let seed = 1; seed < 60 && host === null; seed++) {
+      const candidate = table({ seed: seed * 977, playerCount: 5 });
+      candidate.host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+      while (seatView(candidate.host, 0).phase === 'chelem') {
+        candidate.host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
+      }
+      if (seatView(candidate.host, 0).calledCard !== null) {
+        host = candidate.host;
+        apiOf = candidate.api;
+      }
+    }
+    expect(host).not.toBeNull();
+    show(apiOf as () => SoloGameApi);
+    // Every seat's view carries the called card, including seats that are
+    // neither the taker nor the (still secret) partner.
+    expect(document.querySelector('.called-king-chip')).toBeTruthy();
+  });
+
   it('waves the poignee offer away without playing anything', async () => {
     // A hand big enough to show a poignee is rare; build one by hand instead.
     const { host, api } = table();

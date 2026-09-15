@@ -12,6 +12,7 @@ import {
 import { CONFIG, chooseEcart } from '@tarot/bots';
 import type { SessionSnapshot } from '@tarot/net';
 import { ActionBar } from '../components/ActionBar.tsx';
+import { CardFace } from '../cards/CardFace.tsx';
 import { Hand } from '../components/Hand.tsx';
 import { PlayerBadge } from '../components/PlayerBadge.tsx';
 import { Scoreboard } from '../components/Scoreboard.tsx';
@@ -119,6 +120,12 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
     <>
       <div className="topbar">
         <span className="contract-chip">{contractChip}</span>
+        {view.calledCard !== null && (
+          <span className="called-king-chip">
+            <CardFace card={view.calledCard} width={20} />
+            {t.table.calledKing}
+          </span>
+        )}
         <span className="spacer" />
         {session.undoAvailable && game.undo && (
           <button type="button" className="small ghost" onClick={game.undo}>
