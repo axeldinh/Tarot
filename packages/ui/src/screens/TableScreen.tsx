@@ -16,8 +16,8 @@ import { CardFace } from '../cards/CardFace.tsx';
 import { Hand } from '../components/Hand.tsx';
 import { LastTrick } from '../components/LastTrick.tsx';
 import { PlayerBadge } from '../components/PlayerBadge.tsx';
+import { RoundScore } from '../components/RoundScore.tsx';
 import { Scoreboard } from '../components/Scoreboard.tsx';
-import { ScoreStrip } from '../components/ScoreStrip.tsx';
 import { Sheet } from '../components/Sheet.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { TrickArea, seatAnchor } from '../components/TrickArea.tsx';
@@ -152,7 +152,7 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
         </button>
       </div>
 
-      <ScoreStrip session={session} self={view.self} />
+      <RoundScore view={view} />
 
       <div className="table">
         <TrickArea
