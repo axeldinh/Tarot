@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import {
   Bid,
   LAYOUT,
@@ -14,8 +14,10 @@ import type { SessionSnapshot } from '@tarot/net';
 import { ActionBar } from '../components/ActionBar.tsx';
 import { CardFace } from '../cards/CardFace.tsx';
 import { Hand } from '../components/Hand.tsx';
+import { LastTrick } from '../components/LastTrick.tsx';
 import { PlayerBadge } from '../components/PlayerBadge.tsx';
 import { Scoreboard } from '../components/Scoreboard.tsx';
+import { ScoreStrip } from '../components/ScoreStrip.tsx';
 import { Sheet } from '../components/Sheet.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { TrickArea, seatAnchor } from '../components/TrickArea.tsx';
@@ -39,8 +41,16 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
   const [chosen, setChosen] = useState<Card[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lastTrickOpen, setLastTrickOpen] = useState(false);
   /** Which hand the player waved the poignee offer away in. */
   const [poigneeDeclined, setPoigneeDeclined] = useState<number | null>(null);
+
+  // A new hand starts every trick count back at zero; carrying the sheet's
+  // open flag across that would pop up the previous hand's last trick again
+  // the moment this hand's own first trick lands.
+  useEffect(() => setLastTrickOpen(false), [session.handsDealt]);
+
+  const lastTrick = view.tricks[view.tricks.length - 1] ?? null;
 
   const base = affordances(view);
   const can =
@@ -127,6 +137,11 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
           </span>
         )}
         <span className="spacer" />
+        {lastTrick && (
+          <button type="button" className="small ghost" onClick={() => setLastTrickOpen(true)}>
+            {t.table.lastTrick}
+          </button>
+        )}
         {session.undoAvailable && game.undo && (
           <button type="button" className="small ghost" onClick={game.undo}>
             {t.table.undo}
@@ -136,6 +151,8 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
           {t.table.menu}
         </button>
       </div>
+
+      <ScoreStrip session={session} self={view.self} />
 
       <div className="table">
         <TrickArea
@@ -221,6 +238,12 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
               {t.table.quit}
             </button>
           </div>
+        </Sheet>
+      )}
+
+      {lastTrickOpen && lastTrick && (
+        <Sheet title={t.table.lastTrick} onClose={() => setLastTrickOpen(false)}>
+          <LastTrick trick={lastTrick} seatName={seatName} />
         </Sheet>
       )}
     </>

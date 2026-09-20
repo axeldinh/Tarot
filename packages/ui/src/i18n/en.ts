@@ -139,6 +139,7 @@ export const en: Dict = {
     quit: 'Leave the game',
     close: 'Close',
     trickTo: (who: string) => `Trick to ${who}`,
+    lastTrick: 'Last trick',
   },
   illegal: {
     'must-follow-suit': 'You must follow suit',

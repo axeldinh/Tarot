@@ -254,6 +254,65 @@ describe('the table', () => {
     expect(document.querySelector('.called-king-chip')).toBeTruthy();
   });
 
+  it('shows a running score for every seat, always on screen during play', () => {
+    const { host, api } = table();
+    host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+    const { container } = show(api);
+    const strip = screen.getByTestId('score-strip');
+    expect(strip.querySelectorAll('.score-chip')).toHaveLength(4);
+    expect(container.querySelector('.score-chip.self')?.textContent).toMatch(/Moi/);
+  });
+
+  it('lets a player check the trick that was just played, until the next one starts', () => {
+    const { host, api } = table();
+    host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+    while (seatView(host, 0).phase === 'chelem') {
+      host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
+    }
+    // Right as play opens, no trick has finished yet, so there is nothing to
+    // check back on.
+    expect(seatView(host, 0).tricks).toHaveLength(0);
+    show(api);
+    expect(screen.queryByRole('button', { name: 'Dernier pli' })).toBeNull();
+  });
+
+  it('shows the last trick, cards and winner, once one has been won', () => {
+    const { host, api } = table();
+    host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+    while (seatView(host, 0).phase === 'chelem') {
+      host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
+    }
+    // Play out full tricks until at least one has been completed.
+    for (let guard = 0; guard < 400 && seatView(host, 0).tricks.length === 0; guard++) {
+      const view = seatView(host, 0);
+      if (view.phase !== 'playing') break;
+      const legal = legalCards(view.hand, view.currentTrick?.plays ?? []);
+      host.submit(0, { type: 'PlayCard', player: 0, card: legal[0] as Card });
+    }
+    const view = seatView(host, 0);
+    expect(view.tricks.length).toBeGreaterThan(0);
+    const { container } = show(() => ({
+      seat: 0,
+      token: 'test',
+      view,
+      session: host.getSession(),
+      rejection: null,
+      play: () => {},
+      undo: () => {},
+      nextHand: () => {},
+      dismissRejection: () => {},
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dernier pli' }));
+    const lastTrick = container.querySelector('.last-trick');
+    expect(lastTrick).toBeTruthy();
+    const lastCompleted = view.tricks[view.tricks.length - 1];
+    expect(lastTrick?.querySelectorAll('.last-trick-play')).toHaveLength(
+      lastCompleted?.plays.length ?? 0,
+    );
+    expect(lastTrick?.textContent).toMatch(/Pli pour/);
+  });
+
   it('waves the poignee offer away without playing anything', async () => {
     // A hand big enough to show a poignee is rare; build one by hand instead.
     const { host, api } = table();
