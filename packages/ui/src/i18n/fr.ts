@@ -140,6 +140,7 @@ export const fr = {
     quit: 'Quitter la partie',
     close: 'Fermer',
     trickTo: (who: string) => `Pli pour ${who}`,
+    lastTrick: 'Dernier pli',
   },
   illegal: {
     'must-follow-suit': 'Vous devez fournir à la couleur',
