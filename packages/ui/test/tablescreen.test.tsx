@@ -4,6 +4,8 @@ import {
   Bid,
   LAYOUT,
   legalCards,
+  sideOf,
+  sumPoints2,
   type Action,
   type Card,
   type PlayerView,
@@ -11,6 +13,7 @@ import {
 import { GameHost } from '@tarot/net';
 import { I18nContext, fr } from '../src/i18n/index.ts';
 import { TableScreen } from '../src/screens/TableScreen.tsx';
+import { formatPoints } from '../src/state/labels.ts';
 import type { SoloGameApi } from '../src/state/useSoloGame.ts';
 
 afterEach(cleanup);
@@ -254,13 +257,64 @@ describe('the table', () => {
     expect(document.querySelector('.called-king-chip')).toBeTruthy();
   });
 
-  it('shows a running score for every seat, always on screen during play', () => {
+  it('shows the round score, taker against defence, at zero before any trick is won', () => {
     const { host, api } = table();
     host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+    while (seatView(host, 0).phase === 'chelem') {
+      host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
+    }
     const { container } = show(api);
-    const strip = screen.getByTestId('score-strip');
-    expect(strip.querySelectorAll('.score-chip')).toHaveLength(4);
-    expect(container.querySelector('.score-chip.self')?.textContent).toMatch(/Moi/);
+    const roundScore = screen.getByTestId('round-score');
+    expect(roundScore).toBeTruthy();
+    expect(container.querySelector('.round-score-side.taker .amount')?.textContent).toBe('0');
+    expect(container.querySelector('.round-score-side.defence .amount')?.textContent).toBe('0');
+  });
+
+  it("tallies the round score from tricks won as the hand is played, taker's side against the defence's", () => {
+    const { host, api } = table();
+    host.submit(0, { type: 'Bid', player: 0, bid: Bid.Pass });
+    while (seatView(host, 0).phase === 'chelem') {
+      host.submit(0, { type: 'AnnounceChelem', player: 0, announce: false });
+    }
+    for (let guard = 0; guard < 400 && seatView(host, 0).tricks.length === 0; guard++) {
+      const view = seatView(host, 0);
+      if (view.phase !== 'playing') break;
+      const legal = legalCards(view.hand, view.currentTrick?.plays ?? []);
+      host.submit(0, { type: 'PlayCard', player: 0, card: legal[0] as Card });
+    }
+    const view = seatView(host, 0);
+    expect(view.tricks.length).toBeGreaterThan(0);
+    expect(view.taker).not.toBeNull();
+
+    let takerPoints2 = 0;
+    let defencePoints2 = 0;
+    for (const trick of view.tricks) {
+      const points2 = sumPoints2(trick.plays.map((p) => p.card));
+      if (sideOf(trick.winner, view.taker as number, view.partner) === 'taker') {
+        takerPoints2 += points2;
+      } else {
+        defencePoints2 += points2;
+      }
+    }
+
+    const { container } = show(() => ({
+      seat: 0,
+      token: 'test',
+      view,
+      session: host.getSession(),
+      rejection: null,
+      play: () => {},
+      undo: () => {},
+      nextHand: () => {},
+      dismissRejection: () => {},
+    }));
+
+    expect(container.querySelector('.round-score-side.taker .amount')?.textContent).toBe(
+      formatPoints(takerPoints2 / 2),
+    );
+    expect(container.querySelector('.round-score-side.defence .amount')?.textContent).toBe(
+      formatPoints(defencePoints2 / 2),
+    );
   });
 
   it('lets a player check the trick that was just played, until the next one starts', () => {

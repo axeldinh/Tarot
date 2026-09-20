@@ -122,34 +122,35 @@ body {
   white-space: nowrap;
 }
 
-/* --- score strip ---------------------------------------------------------- */
-.score-strip {
+/* --- round score ------------------------------------------------------------ */
+.round-score {
   display: flex;
   gap: 6px;
   padding: 6px var(--gutter);
-  overflow-x: auto;
   background: rgba(0, 0, 0, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex: none;
 }
-.score-chip {
+.round-score-side {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   white-space: nowrap;
-  flex: none;
 }
-.score-chip.self {
+.round-score-side.taker {
   background: rgba(240, 180, 41, 0.14);
   border: 1px solid rgba(240, 180, 41, 0.4);
 }
-.score-chip .who {
+.round-score-side .who {
   color: var(--ink-dim);
+}
+.round-score-side .amount {
+  font-weight: 600;
 }
 
 /* --- buttons ------------------------------------------------------------ */
