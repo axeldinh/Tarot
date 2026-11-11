@@ -140,6 +140,9 @@ export const en: Dict = {
     close: 'Close',
     trickTo: (who: string) => `Trick to ${who}`,
     lastTrick: 'Last trick',
+    allTricks: 'All tricks',
+    trickN: (n: number) => `Trick ${n}`,
+    earlierTricks: 'Earlier tricks',
   },
   illegal: {
     'must-follow-suit': 'You must follow suit',

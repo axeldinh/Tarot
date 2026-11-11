@@ -29,8 +29,8 @@ if (existsSync(android)) {
 
   const manifest = readFileSync(`${android}app/src/main/AndroidManifest.xml`, 'utf8');
   check(
-    manifest.includes('android:screenOrientation="portrait"'),
-    'the activity is not locked to portrait',
+    manifest.includes('android:screenOrientation="fullSensor"'),
+    'the activity does not follow the device orientation',
   );
   const permissions = [...manifest.matchAll(/uses-permission android:name="([^"]+)"/g)].map(
     (m) => m[1],

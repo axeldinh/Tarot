@@ -20,6 +20,7 @@ import {
   type GameConfig,
   type SavedGame,
 } from './state/storage.ts';
+import { TRICK_PAUSE_MS } from './state/timing.ts';
 import { useSoloGame } from './state/useSoloGame.ts';
 import {
   hostOnlineTable,
@@ -395,11 +396,29 @@ export function App({
           />
         )}
 
-        {playing && !inLobby && handOver && (
-          <ScoreBreakdown
-            result={view?.result ?? null}
-            session={session}
-            onNext={() => game.nextHand()}
+        {playing && !inLobby && handOver && view !== null && (
+          <HandResult
+            // A new hand is a new gate: it must hold its own last trick.
+            key={session.handsDealt}
+            // Keep the table up while the final trick is read and gathered, as
+            // after any other trick; a passed-out hand has no trick to show.
+            hold={view.phase === 'done' && view.tricks.length > 0}
+            table={
+              <TableScreen
+                game={game}
+                view={view}
+                session={session}
+                onRules={openRules}
+                onQuit={screen === 'table' ? leaveTable : quit}
+              />
+            }
+            result={
+              <ScoreBreakdown
+                result={view.result ?? null}
+                session={session}
+                onNext={() => game.nextHand()}
+              />
+            }
           />
         )}
 
@@ -415,4 +434,27 @@ export function App({
       </div>
     </I18nContext.Provider>
   );
+}
+
+/**
+ * Shows the table for one more trick-pause after the hand's last card, then the
+ * score. Without it the final trick was swapped for the score screen the instant
+ * it was won, so the last trick of every hand was never seen.
+ */
+function HandResult({
+  hold,
+  table,
+  result,
+}: {
+  hold: boolean;
+  table: JSX.Element;
+  result: JSX.Element;
+}): JSX.Element {
+  const [shown, setShown] = useState(!hold);
+  useEffect(() => {
+    if (!hold) return;
+    const id = setTimeout(() => setShown(true), TRICK_PAUSE_MS + 150);
+    return () => clearTimeout(id);
+  }, [hold]);
+  return shown ? result : table;
 }

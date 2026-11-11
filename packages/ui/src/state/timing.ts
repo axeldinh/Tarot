@@ -7,7 +7,7 @@
  */
 
 /** How long a completed trick is left face up before it is gathered. */
-export const TRICK_HOLD_MS = 650;
+export const TRICK_HOLD_MS = 1300;
 
 /** How long the cards take to travel to the winner. */
 export const TRICK_GATHER_MS = 450;

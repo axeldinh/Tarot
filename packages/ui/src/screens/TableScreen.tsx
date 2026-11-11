@@ -14,7 +14,7 @@ import type { SessionSnapshot } from '@tarot/net';
 import { ActionBar } from '../components/ActionBar.tsx';
 import { CardFace } from '../cards/CardFace.tsx';
 import { Hand } from '../components/Hand.tsx';
-import { LastTrick } from '../components/LastTrick.tsx';
+import { TrickHistory } from '../components/LastTrick.tsx';
 import { PlayerBadge } from '../components/PlayerBadge.tsx';
 import { RoundScore } from '../components/RoundScore.tsx';
 import { Scoreboard } from '../components/Scoreboard.tsx';
@@ -137,11 +137,6 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
           </span>
         )}
         <span className="spacer" />
-        {lastTrick && (
-          <button type="button" className="small ghost" onClick={() => setLastTrickOpen(true)}>
-            {t.table.lastTrick}
-          </button>
-        )}
         {session.undoAvailable && game.undo && (
           <button type="button" className="small ghost" onClick={game.undo}>
             {t.table.undo}
@@ -155,6 +150,26 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       <RoundScore view={view} />
 
       <div className="table">
+        {lastTrick && (
+          <button
+            type="button"
+            className="last-trick-mini"
+            aria-label={t.table.lastTrick}
+            onClick={() => setLastTrickOpen(true)}
+          >
+            <span className="title">{t.table.lastTrick}</span>
+            <span className="cards">
+              {lastTrick.plays.map((play) => (
+                <span
+                  key={play.card}
+                  className={play.player === lastTrick.winner ? 'winner' : undefined}
+                >
+                  <CardFace card={play.card as Card} width={22} />
+                </span>
+              ))}
+            </span>
+          </button>
+        )}
         <TrickArea
           view={view}
           cardWidth={54}
@@ -242,8 +257,8 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       )}
 
       {lastTrickOpen && lastTrick && (
-        <Sheet title={t.table.lastTrick} onClose={() => setLastTrickOpen(false)}>
-          <LastTrick trick={lastTrick} seatName={seatName} />
+        <Sheet title={t.table.allTricks} onClose={() => setLastTrickOpen(false)}>
+          <TrickHistory tricks={view.tricks} seatName={seatName} />
         </Sheet>
       )}
     </>

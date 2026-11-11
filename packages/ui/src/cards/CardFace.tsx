@@ -13,6 +13,7 @@ import {
   type Card,
   type Suit,
 } from '@tarot/engine';
+import { Court } from './courts.tsx';
 import { Pip, SUIT_COLOUR, SUIT_SYMBOL } from './pips.tsx';
 
 /**
@@ -188,59 +189,6 @@ function Pips({ suit, rank }: { suit: Suit; rank: number }): JSX.Element {
 }
 
 /**
- * The court figures: a bust, drawn as a solid silhouette with its details cut
- * back out in the card's own colour.
- *
- * Silhouettes rather than outlines, because an outlined figure at the size a
- * card is actually shown collapses into grey fuzz. Everything that does not
- * help tell the four apart has been taken out again — hair, a second visor
- * slit, the valet's feather — because at 60 pixels those read as smudges
- * rather than as detail. What is left is the headgear in profile: a spiked
- * crown, a smooth coronet, a plumed helm, a soft cap worn at an angle.
- */
-function Court({ rank, colour }: { rank: number; colour: string }): JSX.Element {
-  const cut = 'var(--card-bg)';
-  return (
-    <g fill={colour}>
-      <path d="M17.5 70 C17.5 61 23 56.5 30 56.5 C37 56.5 42.5 61 42.5 70 Z" />
-
-      {rank === CAVALIER ? (
-        <>
-          <path d="M36.5 35 C43 28 47.5 33.5 43.5 39.5 C41.5 42 39 41.5 37.5 39 Z" />
-          <path d="M22.5 55 C22.5 40 25.5 32.5 30 32.5 C34.5 32.5 37.5 40 37.5 55 Z" />
-          <path d="M24 44 H36" stroke={cut} strokeWidth={2.4} />
-        </>
-      ) : (
-        <ellipse cx={30} cy={47.5} rx={6.5} ry={7.5} />
-      )}
-
-      {rank === ROI && (
-        <>
-          <path d="M21 41 L21 30.5 L25 36 L27.75 26.5 L30 32.5 L32.25 26.5 L35 36 L39 30.5 L39 41 Z" />
-          <path d="M26 50.5 H34" stroke={cut} strokeWidth={1.5} />
-        </>
-      )}
-      {rank === DAME && (
-        <>
-          <path d="M22 41 C22 33.5 25.5 30 30 30 C34.5 30 38 33.5 38 41 Z" />
-          {/* Without this the band merges into the head and the coronet
-              disappears; it is the line that makes her a queen and not a
-              silhouette with a dot on it. */}
-          <path d="M22.5 40.5 H37.5" stroke={cut} strokeWidth={1.4} />
-          <circle cx={30} cy={35.5} r={2} fill={cut} />
-        </>
-      )}
-      {rank === VALET && (
-        <>
-          <ellipse cx={30} cy={38.5} rx={9.5} ry={3.8} transform="rotate(-12 30 38.5)" />
-          <circle cx={30.5} cy={34.6} r={1.5} />
-        </>
-      )}
-    </g>
-  );
-}
-
-/**
  * Trumps carry their strength as colour: a pale tile at atout 1 darkening
  * steadily to atout 21, so which of two trumps is the bigger is visible before
  * the numbers are read.
@@ -310,6 +258,8 @@ export function CardFace({ card, width = CARD_WIDTH, className }: CardFaceProps)
         <text x={30} y={54} className="card-trump-number" fill={ink}>
           {rank}
         </text>
+        {rank === 21 && <Laurel />}
+        {rank === 1 && <Bateleur />}
         {isBout(card) && <BoutMark />}
       </svg>
     );
@@ -326,7 +276,7 @@ export function CardFace({ card, width = CARD_WIDTH, className }: CardFaceProps)
       <Corners index={cornerIndex(card)} symbol={SUIT_SYMBOL[suit]} colour={colour} />
       {isCourt ? (
         <>
-          <Court rank={rank} colour={colour} />
+          <Court rank={rank} suit={suit} colour={colour} />
           <Pip suit={suit} x={30} y={80} size={11} />
         </>
       ) : (
@@ -393,5 +343,49 @@ export function CardBack({ width = CARD_WIDTH, className }: { width?: number; cl
         opacity={0.7}
       />
     </svg>
+  );
+}
+
+/** The 21, the World: its number sits inside a laurel wreath. */
+function Laurel(): JSX.Element {
+  const leaves = Array.from({ length: 9 }, (_, i) => 28 + (i * 124) / 8);
+  const side = (flip: boolean): JSX.Element => (
+    <g transform={flip ? 'translate(60 0) scale(-1 1)' : undefined}>
+      {leaves.map((deg) => {
+        const a = (deg * Math.PI) / 180;
+        const x = 30 + 17 * Math.cos(Math.PI - a);
+        const y = 46 + 17 * Math.sin(Math.PI - a) * 1.15;
+        return (
+          <ellipse
+            key={deg}
+            cx={x}
+            cy={y}
+            rx={1.2}
+            ry={2.8}
+            fill="#e2b93b"
+            transform={`rotate(${deg - 90 + 180} ${x} ${y})`}
+          />
+        );
+      })}
+    </g>
+  );
+  return (
+    <g opacity={0.95}>
+      {side(false)}
+      {side(true)}
+      <path d="M26 71 Q30 73.5 34 71" fill="none" stroke="#c0392b" strokeWidth={1.2} />
+    </g>
+  );
+}
+
+/** The Petit, atout 1, the Bateleur: a juggler's wide-brimmed hat over the number. */
+function Bateleur(): JSX.Element {
+  return (
+    <g>
+      <ellipse cx={30} cy={37} rx={9} ry={2.4} fill="#e2b93b" stroke="#a87a10" strokeWidth={0.5} />
+      <path d="M24.5 36.5 C24.5 29 35.5 29 35.5 36.5 Z" fill="#e2b93b" stroke="#a87a10" strokeWidth={0.5} />
+      <path d="M24.8 35 H35.2" stroke="#c0392b" strokeWidth={1.2} />
+      <path d="M30 28.5 C33 25.5 36.5 27.5 36 30" fill="none" stroke="#c0392b" strokeWidth={1} />
+    </g>
   );
 }
