@@ -27,10 +27,14 @@ export default defineConfig(({ mode }) => ({
         categories: ['games'],
         start_url: '.',
         scope: '.',
-        display: 'standalone',
+        display: 'fullscreen',
+        // Fullscreen hides the status bar and lets the table run under the camera
+        // cut-out (the safe-area insets keep the controls clear of it); fall back
+        // to a normal app window where a browser refuses fullscreen.
+        display_override: ['fullscreen', 'standalone'],
         orientation: 'any',
         background_color: '#0d3a20',
-        theme_color: '#14532d',
+        theme_color: '#0d3a20',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
