@@ -456,8 +456,8 @@ describe('a solo game', () => {
     });
     expect(delays.length).toBeGreaterThan(0);
     for (const ms of delays) {
-      expect(ms).toBeGreaterThanOrEqual(550);
-      expect(ms).toBeLessThanOrEqual(950);
+      expect(ms).toBeGreaterThanOrEqual(350);
+      expect(ms).toBeLessThanOrEqual(700);
     }
     game.close();
   });

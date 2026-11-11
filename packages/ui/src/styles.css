@@ -801,3 +801,33 @@ table.scores td:first-child {
     transform: translate(-50%, -50%);
   }
 }
+
+/* The previous trick, always in the corner: no tap needed to check it. */
+.last-trick-mini {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: inherit;
+  font: inherit;
+  max-width: 45%;
+}
+.last-trick-mini .title {
+  display: block;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.last-trick-mini .cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+}
+.last-trick-mini .cards > span { opacity: 0.6; border-radius: 3px; line-height: 0; }
+.last-trick-mini .cards > .winner { opacity: 1; outline: 2px solid #f2c94c; }

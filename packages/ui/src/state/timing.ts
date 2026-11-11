@@ -7,10 +7,10 @@
  */
 
 /** How long a completed trick is left face up before it is gathered. */
-export const TRICK_HOLD_MS = 650;
+export const TRICK_HOLD_MS = 700;
 
 /** How long the cards take to travel to the winner. */
-export const TRICK_GATHER_MS = 450;
+export const TRICK_GATHER_MS = 350;
 
 /**
  * The least the host will wait before anyone leads again. A bot's thinking time
