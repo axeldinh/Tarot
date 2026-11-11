@@ -76,7 +76,8 @@ try {
   });
   if (!manifest) fail('no web app manifest');
   else {
-    if (manifest.display !== 'standalone') fail(`display is ${manifest.display}`);
+    if (manifest.display !== 'fullscreen') fail(`display is ${manifest.display}`);
+    if (!manifest.display_override?.includes('standalone')) fail('no standalone fallback');
     if (manifest.orientation !== 'any') fail(`orientation is ${manifest.orientation}`);
     const sizes = new Set(manifest.icons.map((i) => i.sizes));
     for (const needed of ['192x192', '512x512']) {
