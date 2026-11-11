@@ -1,5 +1,6 @@
 import {
   LAYOUT,
+  isExcuse,
   legalCards,
   type Card,
   type PlayerView,
@@ -46,7 +47,16 @@ export function chooseCard(
   now: Clock,
 ): CardChoice {
   const plays = view.currentTrick?.plays ?? [];
-  const legal = legalCards(view.hand, plays);
+  let legal = legalCards(view.hand, plays);
+  // Leading the Excuse early throws away what makes it valuable: it is a free
+  // card that keeps a bout out of an opponent's hands, and it is worth most
+  // when kept to the end. The search rated it as a harmless lead and was
+  // opening hands with it, so it is taken off the table unless the hand is
+  // nearly played out (or it is the only legal card, which `legalCards` covers).
+  if (plays.length === 0 && view.hand.length > 2 && legal.some(isExcuse)) {
+    const others = legal.filter((c) => !isExcuse(c));
+    if (others.length > 0) legal = others;
+  }
   const expected = new Map<Card, number>();
 
   if (legal.length === 1) return { card: legal[0] as Card, samples: 0, expected };

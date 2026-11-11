@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Bid,
+  isExcuse,
   legalCards,
   makeRng,
   playerView,
@@ -41,9 +42,24 @@ describe('choosing a card', () => {
 
     expect(choice.samples).toBe(6);
     expect(legal).toContain(choice.card);
-    expect([...choice.expected.keys()].sort()).toEqual([...legal].sort());
+    // An early lead never considers the Excuse.
+    const leading = (view.currentTrick?.plays ?? []).length === 0 && view.hand.length > 2;
+    const considered = legal.filter((c) => !(leading && isExcuse(c)));
+    expect([...choice.expected.keys()].sort()).toEqual([...considered].sort());
     const best = Math.max(...choice.expected.values());
     expect(choice.expected.get(choice.card)).toBe(best);
+  });
+
+  it('does not lead the Excuse early', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = dealToPlay({}, { taker: 0, bid: Bid.Garde, seed });
+      const view = playerView(s, s.currentPlayer);
+      if (!view.hand.some(isExcuse) || (view.currentTrick?.plays ?? []).length > 0) continue;
+      for (const config of [fastConfig, CONFIG.debutant]) {
+        const choice = chooseCard(view, config, makeRng(seed), () => 0);
+        expect(isExcuse(choice.card)).toBe(false);
+      }
+    }
   });
 
   it('stops as soon as the move budget is gone', () => {
