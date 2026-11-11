@@ -14,7 +14,7 @@ import type { SessionSnapshot } from '@tarot/net';
 import { ActionBar } from '../components/ActionBar.tsx';
 import { CardFace } from '../cards/CardFace.tsx';
 import { Hand } from '../components/Hand.tsx';
-import { LastTrick } from '../components/LastTrick.tsx';
+import { TrickHistory } from '../components/LastTrick.tsx';
 import { PlayerBadge } from '../components/PlayerBadge.tsx';
 import { RoundScore } from '../components/RoundScore.tsx';
 import { Scoreboard } from '../components/Scoreboard.tsx';
@@ -257,8 +257,8 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       )}
 
       {lastTrickOpen && lastTrick && (
-        <Sheet title={t.table.lastTrick} onClose={() => setLastTrickOpen(false)}>
-          <LastTrick trick={lastTrick} seatName={seatName} />
+        <Sheet title={t.table.allTricks} onClose={() => setLastTrickOpen(false)}>
+          <TrickHistory tricks={view.tricks} seatName={seatName} />
         </Sheet>
       )}
     </>

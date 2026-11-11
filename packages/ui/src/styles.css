@@ -543,7 +543,7 @@ button.small {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000;
 }
 .sheet-inner {
   background: var(--panel-solid);
@@ -831,3 +831,39 @@ table.scores td:first-child {
 }
 .last-trick-mini .cards > span { opacity: 0.6; border-radius: 3px; line-height: 0; }
 .last-trick-mini .cards > .winner { opacity: 1; outline: 2px solid #f2c94c; }
+
+.trick-history h3 { font-size: 12px; margin: 14px 0 6px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.trick-history { max-height: 40vh; overflow-y: auto; }
+.trick-history-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; }
+.trick-history-row .n { width: 48px; flex: none; color: var(--ink-dim); }
+.trick-history-row .cards { display: flex; gap: 3px; flex: 1; flex-wrap: wrap; }
+.trick-history-row .cards > span { line-height: 0; opacity: 0.65; border-radius: 3px; }
+.trick-history-row .cards > .winner { opacity: 1; outline: 2px solid #f2c94c; }
+.trick-history-row .to { flex: none; color: var(--accent); font-weight: 600; }
+
+/* --- landscape (phone turned 90 degrees) ---------------------------------
+   Height is the scarce thing: the felt shrinks and the hand uses the full
+   width, so cards fan out far less and can be read. */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root {
+    --app-max: 100vw;
+    --card-w: 56px;
+    --gutter: 12px;
+  }
+  .topbar { padding: 4px var(--gutter); }
+  .hand {
+    padding: 4px var(--gutter) calc(4px + env(safe-area-inset-bottom));
+    min-height: calc(var(--card-w) * 1.53 + 12px);
+  }
+  .trick-card svg {
+    width: calc(var(--card-w) * 0.7);
+    height: calc(var(--card-w) * 0.7 * 92 / 60);
+  }
+  .trick { inset: 2% 20%; }
+  .last-trick-mini { max-width: 30%; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .sheet { align-items: center; }
+  .sheet-inner { max-height: 94%; border-radius: 16px; max-width: min(100vw, 640px); }
+  .trick-history { max-height: none; overflow: visible; }
+}

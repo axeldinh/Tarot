@@ -141,6 +141,9 @@ export const fr = {
     close: 'Fermer',
     trickTo: (who: string) => `Pli pour ${who}`,
     lastTrick: 'Dernier pli',
+    allTricks: 'Tous les plis',
+    trickN: (n: number) => `Pli ${n}`,
+    earlierTricks: 'Plis précédents',
   },
   illegal: {
     'must-follow-suit': 'Vous devez fournir à la couleur',
