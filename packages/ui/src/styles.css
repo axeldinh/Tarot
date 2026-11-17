@@ -4,6 +4,7 @@
   --card-w: 58px;
   --gutter: 10px;
   --app-max: 640px;
+  --seat-min-right: 92px;
 
   --felt: #14532d;
   --felt-deep: #0d3a20;
@@ -89,7 +90,10 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
+  /* On a narrow phone the contract, the called king, Annuler and Menu do not
+     fit on one line, and the one that fell off the edge was Menu. */
+  flex-wrap: wrap;
   padding: 8px var(--gutter);
   background: rgba(0, 0, 0, 0.22);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -120,6 +124,13 @@ body {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
   white-space: nowrap;
+}
+
+/* The card itself says which king was called; the words are the first thing to
+   go when the top bar runs out of room. */
+@media (max-width: 430px) and (orientation: portrait) {
+  .called-label { display: none; }
+  .called-king-chip { padding: 3px 4px; }
 }
 
 /* --- round score ------------------------------------------------------------ */
@@ -852,15 +863,44 @@ table.scores td:first-child {
   }
   .topbar { padding: 4px var(--gutter); }
   .hand {
-    padding: 4px var(--gutter) calc(4px + env(safe-area-inset-bottom));
-    min-height: calc(var(--card-w) * 1.53 + 12px);
+    padding: 4px var(--gutter) calc(14px + env(safe-area-inset-bottom));
+    min-height: calc(var(--card-w) * 1.53 + 22px);
   }
   .trick-card svg {
     width: calc(var(--card-w) * 0.7);
     height: calc(var(--card-w) * 0.7 * 92 / 60);
   }
   .trick { inset: 2% 20%; }
-  .last-trick-mini { max-width: 30%; }
+  /* Height is scarce, so the badges become one line and the last trick leaves
+     the felt for the top bar, where there is room, instead of sitting on top of
+     whoever is on the right. */
+  :root { --seat-min-right: 0px; }
+  .badge {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    padding: 3px 8px;
+    min-width: 0;
+  }
+  .badge .role,
+  .badge .away-note { display: inline; }
+  .seat { max-width: 22%; }
+  .last-trick-mini {
+    position: fixed;
+    top: 5px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: none;
+    padding: 2px 6px;
+  }
+  .last-trick-mini .title { white-space: nowrap; }
+  .last-trick-mini .cards { flex-wrap: nowrap; }
 }
 @media (orientation: landscape) and (max-height: 560px) {
   .sheet { align-items: center; }

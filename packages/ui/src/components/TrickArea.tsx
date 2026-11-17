@@ -42,7 +42,14 @@ export function seatAnchor(relative: number, playerCount: number): SeatAnchor {
   const x = Math.sin(angle);
   const top = `${50 + 39 * Math.cos(angle)}%`;
   if (x < -0.3) return { side: 'left', style: { left: '2%', top, transform: 'translateY(-50%)' } };
-  if (x > 0.3) return { side: 'right', style: { right: '2%', top, transform: 'translateY(-50%)' } };
+  // The last-trick chip lives in the top-right corner, so a right-hand badge is
+  // kept below it (--seat-min-right is 0 where the chip has moved out of the way).
+  if (x > 0.3) {
+    return {
+      side: 'right',
+      style: { right: '2%', top: `max(${top}, var(--seat-min-right, 0px))`, transform: 'translateY(-50%)' },
+    };
+  }
   return { side: 'top', style: { left: '50%', top, transform: 'translate(-50%, -50%)' } };
 }
 
