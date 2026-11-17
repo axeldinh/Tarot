@@ -131,9 +131,9 @@ export function TableScreen({ game, view, session, onRules, onQuit }: TableScree
       <div className="topbar">
         <span className="contract-chip">{contractChip}</span>
         {view.calledCard !== null && (
-          <span className="called-king-chip">
+          <span className="called-king-chip" title={t.table.calledKing}>
             <CardFace card={view.calledCard} width={36} />
-            {t.table.calledKing}
+            <span className="called-label">{t.table.calledKing}</span>
           </span>
         )}
         <span className="spacer" />
