@@ -35,6 +35,17 @@ export const BID_MULTIPLIER: Record<Bid, number> = {
 
 export type PoigneeKind = 'simple' | 'double' | 'triple';
 
+/** `atouts`: no trump at all. `tetes`: no valet, cavalier, dame or roi. */
+export type MisereKind = 'atouts' | 'tetes';
+
+/** Paid by each other player to the holder, flat and whatever the contract. */
+export const MISERE_BONUS = 10;
+
+export interface MisereDeclaration {
+  player: number;
+  kind: MisereKind;
+}
+
 export const POIGNEE_BONUS: Record<PoigneeKind, number> = {
   simple: 20,
   double: 30,
@@ -133,6 +144,8 @@ export interface HandResult {
   petitAuBoutSide: Side | null;
   base: number;
   poigneeBonus: number;
+  /** Declared misères; settled flat between players, outside the contract. */
+  miseres: MisereDeclaration[];
   chelemBonus: number;
   /** Signed from the taker's point of view; a defender's delta is its negation. */
   score: number;
@@ -178,6 +191,8 @@ export interface GameState {
   /** How many players have answered the chelem question in the current hand. */
   chelemAnswers: number;
   poignees: PoigneeDeclaration[];
+  /** Worked out when play begins, from the hands as they then stand. */
+  miseres: MisereDeclaration[];
 
   currentTrick: { leader: number; plays: TrickPlay[] } | null;
   tricks: CompletedTrick[];
@@ -217,6 +232,7 @@ export interface PlayerView {
   ecartTrumpsShown: Card[];
   chelemAnnouncedBy: number | null;
   poignees: PoigneeDeclaration[];
+  miseres: MisereDeclaration[];
   currentTrick: { leader: number; plays: TrickPlay[] } | null;
   tricks: CompletedTrick[];
   cardsLeft: number[];

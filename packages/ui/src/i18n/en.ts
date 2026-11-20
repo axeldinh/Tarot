@@ -168,6 +168,8 @@ export const en: Dict = {
     base: 'Base',
     petitAuBout: 'Petit au bout',
     poignee: 'Poignee',
+    misere: (kind: 'atouts' | 'tetes', who: string) =>
+      `Misère ${kind === 'atouts' ? 'of trumps' : 'of heads'} · ${who}`,
     chelem: 'Chelem',
     total: 'Hand score',
     deltas: 'Who pays whom',

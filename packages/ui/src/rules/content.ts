@@ -175,6 +175,10 @@ const FR: RuleSection[] = [
       },
       {
         kind: 'p',
+        text: 'Misères : une main sans aucun atout (misère d’atouts) ou sans aucune tête — valet, cavalier, dame, roi — (misère de têtes) rapporte 10 points de chaque autre joueur, quel que soit le contrat. L’Excuse n’est ni un atout ni une tête. La misère est constatée au début du jeu, après l’écart du preneur ; elle est payée hors contrat, sans multiplicateur.',
+      },
+      {
+        kind: 'p',
         text: 'Chelem : toutes les levées. Annoncé et réussi +400, annoncé et chuté −200, réussi sans annonce +200. Celui qui l’annonce entame.',
       },
     ],
@@ -346,6 +350,10 @@ const EN: RuleSection[] = [
       {
         kind: 'p',
         text: 'A poignee is shown before you play your first card. The Excuse counts as a trump in it only if you would otherwise be short. The bonus always goes to the winning side, whoever showed it.',
+      },
+      {
+        kind: 'p',
+        text: 'Misères: a hand with no trump at all (misère of trumps) or no face card — jack, knight, queen, king — (misère of heads) earns 10 points from every other player, whatever the contract. The Excuse is neither a trump nor a face card. It is recognised when play begins, after the taker\'s écart, and is paid outside the contract with no multiplier.',
       },
       {
         kind: 'p',

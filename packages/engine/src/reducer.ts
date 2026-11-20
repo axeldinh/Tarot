@@ -12,6 +12,7 @@ import {
 import { LAYOUT, deal, nextPlayer } from './deal.ts';
 import { validateEcart } from './ecart.ts';
 import { EngineError } from './errors.ts';
+import { misereKinds } from './misere.ts';
 import { canAnnouncePoignee, poigneeCards } from './poignee.ts';
 import { makeRng } from './rng.ts';
 import { scoreState, sideOf } from './scoring.ts';
@@ -94,6 +95,7 @@ export function createHandFrom(options: ExplicitHandOptions): GameState {
     chelemAnnouncedBy: null,
     chelemAnswers: 0,
     poignees: [],
+    miseres: [],
     currentTrick: null,
     tricks: [],
     piles: Array.from({ length: playerCount }, () => []),
@@ -113,6 +115,7 @@ function cloneState(s: GameState): GameState {
     ecart: [...s.ecart],
     ecartTrumpsShown: [...s.ecartTrumpsShown],
     poignees: s.poignees.map((p) => ({ ...p, cards: [...p.cards] })),
+    miseres: s.miseres.map((m) => ({ ...m })),
     currentTrick: s.currentTrick
       ? { leader: s.currentTrick.leader, plays: s.currentTrick.plays.map((p) => ({ ...p })) }
       : null,
@@ -268,6 +271,11 @@ function applyChelem(s: GameState, player: number, announce: boolean): void {
 
 function startPlay(s: GameState): void {
   s.phase = 'playing';
+  // Hands are final now (the taker has buried his ecart), so this is the moment
+  // a misere can be told, and it is announced to the table, not hidden.
+  s.miseres = s.hands.flatMap((hand, player) =>
+    misereKinds(hand).map((kind) => ({ player, kind })),
+  );
   const leader = s.chelemAnnouncedBy ?? nextPlayer(s.dealer, s.playerCount);
   s.currentTrick = { leader, plays: [] };
   s.currentPlayer = leader;
@@ -496,6 +504,7 @@ export function playerView(state: GameState, p: number): PlayerView {
     ecartTrumpsShown: [...state.ecartTrumpsShown],
     chelemAnnouncedBy: state.chelemAnnouncedBy,
     poignees: state.poignees.map((x) => ({ ...x, cards: [...x.cards] })),
+    miseres: state.miseres.map((m) => ({ ...m })),
     currentTrick: state.currentTrick
       ? {
           leader: state.currentTrick.leader,

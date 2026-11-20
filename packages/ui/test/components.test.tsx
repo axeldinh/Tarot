@@ -219,6 +219,7 @@ describe('the score breakdown', () => {
     petitAuBoutSide: null,
     base: 36,
     poigneeBonus: 0,
+    miseres: [],
     chelemBonus: 0,
     score: 72,
     deltas: [-72, -72, -72, 216],
