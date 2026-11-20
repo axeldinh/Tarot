@@ -30,6 +30,7 @@ const baseView: PlayerView = {
   ecartTrumpsShown: [],
   chelemAnnouncedBy: null,
   poignees: [],
+  miseres: [],
   currentTrick: null,
   tricks: [],
   cardsLeft: [3, 3, 3, 3],

@@ -5,6 +5,7 @@ export * from './deal.ts';
 export * from './trick.ts';
 export * from './ecart.ts';
 export * from './poignee.ts';
+export * from './misere.ts';
 export * from './scoring.ts';
 export * from './errors.ts';
 export * from './reducer.ts';

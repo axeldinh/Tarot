@@ -17,6 +17,7 @@ import {
   type GameState,
 } from '../src/index.ts';
 import { bidTo, handFrom, playOut, skipChelem } from './helpers.ts';
+import { contractDeltas } from './contract-deltas.ts';
 
 const CALLABLE = (hand: string) => legalCalls(parseHand(hand)).map(rankOf);
 
@@ -60,7 +61,7 @@ describe('the called king at five players', () => {
     expect(s.result?.partner).toBe(3);
     expect(playerView(s, 1).partner).toBe(3);
     // Taker twice, partner once, three defenders once each.
-    const d = s.result?.deltas as number[];
+    const d = contractDeltas(s.result as never);
     const unit = d[3] as number;
     expect(d[0]).toBe(2 * unit);
     expect([d[1], d[2], d[4]]).toEqual([-unit, -unit, -unit]);

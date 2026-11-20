@@ -72,6 +72,13 @@ export function ScoreBreakdown({ result, session, onNext }: ScoreBreakdownProps)
         {result.poigneeBonus !== 0 && (
           <Line label={t.score.poignee} value={formatSigned(result.poigneeBonus)} />
         )}
+        {result.miseres.map((m) => (
+          <Line
+            key={`${m.player}-${m.kind}`}
+            label={t.score.misere(m.kind, name(m.player))}
+            value={formatSigned(10 * (result.deltas.length - 1))}
+          />
+        ))}
         {result.chelemBonus !== 0 && (
           <Line label={t.score.chelem} value={formatSigned(result.chelemBonus)} />
         )}

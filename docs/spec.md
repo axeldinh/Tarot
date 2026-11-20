@@ -202,6 +202,13 @@ score += chelem                  (flat, NOT multiplied)
   | Double | 15 | 13 | 10 | 30 |
   | Triple | 18 | 15 | 13 | 40 |
 
+- **Misères** (flat, outside the contract, never multiplied): a hand with no
+  trump (*misère d'atouts*) and/or no valet, cavalier, dame or roi (*misère de
+  têtes*) earns 10 from each other player. The Excuse is neither a trump nor a
+  head. Checked automatically when play begins (after the taker's écart) and
+  announced to the table; the hand itself is not shown. Open to every player,
+  whichever side. This is a common house rule, not in the FFT tournament rules.
+
 - **Chelem** (all tricks): announced and made **+400**; announced and failed
   **−200**; made without announcing **+200**. A player announcing a chelem leads
   the first trick.

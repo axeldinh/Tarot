@@ -169,6 +169,8 @@ export const fr = {
     base: 'Base',
     petitAuBout: 'Petit au bout',
     poignee: 'Poignée',
+    misere: (kind: 'atouts' | 'tetes', who: string) =>
+      `Misère ${kind === 'atouts' ? 'd’atouts' : 'de têtes'} · ${who}`,
     chelem: 'Chelem',
     total: 'Score de la donne',
     deltas: 'Gains et pertes',

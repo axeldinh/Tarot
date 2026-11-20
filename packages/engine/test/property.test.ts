@@ -12,6 +12,7 @@ import {
   type PlayerCount,
 } from '../src/index.ts';
 import { randomHand } from './helpers.ts';
+import { contractDeltas } from './contract-deltas.ts';
 
 const DEALS_PER_TABLE = Number(process.env.TAROT_PROPERTY_DEALS ?? 10_000);
 
@@ -59,9 +60,10 @@ describe('randomised hands', () => {
         expect(result.deltas).toHaveLength(n);
         expect(result.deltas.reduce((a, b) => a + b, 0)).toBe(0);
         // The taker collects from, or pays, everyone who is not on his side.
-        const opponents = result.deltas.filter((_, p) => p !== result.taker && p !== result.partner);
+        const deltas = contractDeltas(result);
+        const opponents = deltas.filter((_, p) => p !== result.taker && p !== result.partner);
         expect(opponents).toEqual(new Array(opponents.length).fill(-result.score));
-        if (n !== 5) expect(result.deltas[result.taker]).toBe(result.score * (n - 1));
+        if (n !== 5) expect(deltas[result.taker]).toBe(result.score * (n - 1));
       }
 
       // The sampler is supposed to produce mostly played hands.

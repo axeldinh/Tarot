@@ -2,7 +2,9 @@ import { PETIT, TOTAL_POINTS_2, countBouts, sumPoints2, type Card } from './card
 import {
   BID_MULTIPLIER,
   Bid,
+  MISERE_BONUS,
   POIGNEE_BONUS,
+  type MisereDeclaration,
   type CompletedTrick,
   type GameState,
   type HandResult,
@@ -44,6 +46,7 @@ export interface ScoringInput {
   bouts: number;
   petitAuBoutSide: Side | null;
   poignees: readonly { side: Side; kind: PoigneeKind }[];
+  miseres?: readonly MisereDeclaration[];
   chelem: ChelemInfo;
   rules: Rules;
 }
@@ -80,6 +83,16 @@ export function scoreHand(input: ScoringInput): HandResult {
 
   const score = score2 / 2;
   const deltas = settle(score, playerCount, taker, partner);
+  // Misères are paid player to player, so they never touch the contract's
+  // score and the deltas still sum to zero.
+  const miseres = (input.miseres ?? []).map((m) => ({ ...m }));
+  for (const m of miseres) {
+    for (let p = 0; p < playerCount; p++) {
+      if (p === m.player) continue;
+      deltas[m.player] = (deltas[m.player] as number) + MISERE_BONUS;
+      deltas[p] = (deltas[p] as number) - MISERE_BONUS;
+    }
+  }
 
   return {
     taker,
@@ -97,6 +110,7 @@ export function scoreHand(input: ScoringInput): HandResult {
     petitAuBoutSide: input.petitAuBoutSide,
     base: base2 / 2,
     poigneeBonus: contractSign * poigneeBonus,
+    miseres,
     chelemBonus,
     score,
     deltas,
@@ -219,6 +233,7 @@ export function scoreState(state: GameState): HandResult {
       side: sideOf(p.player, state.taker as number, state.partner),
       kind: p.kind,
     })),
+    miseres: state.miseres,
     chelem: chelemInfo(state),
     rules: state.rules,
   });

@@ -10,6 +10,7 @@ import {
   type GameState,
 } from '../src/index.ts';
 import { bidTo, handFrom, playCards, playOut, skipChelem } from './helpers.ts';
+import { contractDeltas } from './contract-deltas.ts';
 
 /** Player 0 holds the Excuse and every trump from 5 up: he cannot lose a trick. */
 const EXCUSE_AND_TOP_TRUMPS =
@@ -111,8 +112,8 @@ describe('the Excuse on the last trick', () => {
       base: 80,
       chelemBonus: 400,
       score: 720,
-      deltas: [2160, -720, -720, -720],
     });
+    expect(contractDeltas(s.result as never)).toEqual([2160, -720, -720, -720]);
     expect(s.result?.deltas.reduce((a, b) => a + b, 0)).toBe(0);
     expect(formatHand(s.hands[0] as Card[])).toBe('');
   });
